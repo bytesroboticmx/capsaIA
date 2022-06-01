@@ -3,12 +3,12 @@ import numpy as np
 from ..metric import Metric
 
 
-class HistogramBiasWrapper(Metric):
+class HistogramBias(Metric):
     """A metric that keeps track of feature distributions in order
     to infer the density of new test samples."""
 
     def __init__(self, model):
-        super(HistogramBiasWrapper, self).__init__(model)
+        super(HistogramBias, self).__init__(model)
         self.num_bins = 5
         self.feature_dim = self.model.layers[-2].output_shape[
             -1
