@@ -1,14 +1,14 @@
 import tensorflow as tf
 import numpy as np
+from ..metric import Metric
 
 
-class HistogramBiasWrapper(tf.keras.Model):
-    """A type of tf.Model that keeps track of feature distributions in order
+class HistogramBiasWrapper(Metric):
+    """A metric that keeps track of feature distributions in order
     to infer the density of new test samples."""
 
     def __init__(self, model):
-        super(HistogramBiasWrapper, self).__init__()
-        self.model = model
+        super(HistogramBiasWrapper, self).__init__(model)
         self.num_bins = 5
         self.feature_dim = self.model.layers[-2].output_shape[
             -1
@@ -16,10 +16,7 @@ class HistogramBiasWrapper(tf.keras.Model):
         self.histograms = np.zeros((self.feature_dim, self.num_bins))
         self.bins = np.zeroes((self.feature_dim, self.num_bins + 1))
 
-    def train_step(self, data):
-        # Update weights of internal model
-        m = self.model.train_step(data)
-
+    def post_train_step(self, data):
         # Extract features
         feature_extractor = tf.keras.Model(
             self.model.inputs, self.model.layers[-1].output
@@ -47,13 +44,9 @@ class HistogramBiasWrapper(tf.keras.Model):
                 )
                 self.histograms[idx] += hist
 
-        return m
-
-    def call(self, x, return_bias=False):
+    def call(self, x):
         # Normalize histograms
         self.histograms = self.histograms / np.sum(self.histograms, axis=1)
-        # Call the internal model on this input
-        output = self.model.call(x)
 
         # Get features of the datapoints
         feature_extractor = tf.keras.Model(
@@ -70,4 +63,4 @@ class HistogramBiasWrapper(tf.keras.Model):
         bias = np.prod(probabilities, axis=1)
 
         # Return
-        return output if not return_bias else (output, bias)
+        return bias
