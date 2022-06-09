@@ -44,7 +44,7 @@ class HistogramBias(Metric):
                 )
                 self.histograms[idx] += hist
 
-    def call(self, x):
+    def get_output(self, x):
         # Normalize histograms
         self.histograms = self.histograms / np.sum(self.histograms, axis=1)
 
