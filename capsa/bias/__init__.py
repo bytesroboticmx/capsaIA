@@ -1,1 +1,1 @@
-from .histogram import HistogramBiasWrapper
+from .histogram import HistogramBias
