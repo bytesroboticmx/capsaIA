@@ -16,21 +16,6 @@ class Wrapper(tf.keras.Model):
         self.mode = mode
         self.uncertainty_metrics = {}
         if includeHistogram:
-<<<<<<< HEAD
-            self.metrics["bias"] = histogram.HistogramBias(model)
-        self.model = model
-
-    def train_step(self):
-        for _, v in self.metrics.items():
-            v.pre_train_step()
-
-        m = self.model.train_step()
-
-        for _, v in self.metrics.items():
-            v.post_train_step()
-
-        return m
-=======
             self.uncertainty_metrics["bias"] = histogram.HistogramBias(model)
         if includeAleatoric:
             self.uncertainty_metrics["aleatoric"] = mve.MVE(model, mode)
@@ -120,19 +105,12 @@ class Wrapper(tf.keras.Model):
         compiled_metrics = {m.name: m.result() for m in self.metrics}
         compiled_metrics["loss"] = self.loss_tracker.result()
         return compiled_metrics
->>>>>>> fcf4ae8... redone wrappers and metrics
 
     def call(self, x, training=True):
         features = self.feature_extractor(x)
         outputs = {}
-<<<<<<< HEAD
-        for k, v in self.metrics.items():
-            outputs[k] = v.call(x)
-        # TODO: might have to change how we return outputs?
-=======
         for metric_name, layer in self.output_layers.items():
             outputs[metric_name] = layer(features, training=training)
->>>>>>> fcf4ae8... redone wrappers and metrics
 
         if self.mode == "classification":
             outputs["final_output"] = self.softmax(outputs["logits"])

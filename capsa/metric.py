@@ -3,16 +3,16 @@ import numpy as np
 
 
 class Metric:
-    """Base class for all bias, aleatoric, and epistemic uncertainty metrics"""
+    """Base class for all bias and aleatoric uncertainty metrics"""
 
     def __init__(self, model):
         self.model = model
+        self.stochastic_forward_pass = False
+        self.additional_layer = None
 
-    def pre_train_step(self, data):
+    def create_additional_layers():
         pass
 
-    def post_train_step(self, data):
+    def get_output(self, x):
         pass
 
-    def call(self, x):
-        pass
