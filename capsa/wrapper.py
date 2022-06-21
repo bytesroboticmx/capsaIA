@@ -93,10 +93,12 @@ class Wrapper(tf.keras.Model):
             )
         else:
             loss = self.compiled_loss(
-                y, outputs["final_output"], regularization_losses=self.losses,
+                y_true=y,
+                y_pred=outputs["final_output"],
+                regularization_losses=self.losses,
             )
         # Update the metrics.
-        self.compiled_metrics.update_state(y, outputs)
+        self.compiled_metrics.update_state(y, outputs["final_output"])
         self.loss_tracker.update_state(loss)
         # Return a dict mapping metric names to current value.
         # Note that it will include the loss (tracked in self.metrics).
