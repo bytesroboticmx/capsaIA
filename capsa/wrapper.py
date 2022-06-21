@@ -17,8 +17,6 @@ class Wrapper(tf.keras.Model):
         self.uncertainty_metrics = {}
         if includeHistogram:
             self.uncertainty_metrics["bias"] = histogram.HistogramBias(model)
-        if includeAleatoric:
-            self.uncertainty_metrics["aleatoric"] = mve.MVE(model, mode)
         self.aleatoric = includeAleatoric
         self.feature_extractor = tf.keras.Model(model.inputs, model.layers[-2].output)
         self.output_layers = {}
