@@ -13,6 +13,7 @@ class HistogramBias(Metric):
         self.num_bins = 5
         self.model = model
         self.additional_layer = self._create_additional_layers()
+        self.name = "bias"
 
     def _create_additional_layers(self):
         return HistogramLayer(self.num_bins)

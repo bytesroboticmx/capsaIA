@@ -1,3 +1,4 @@
 """ Top-level package for capsa. """
 
-from .wrap import wrap
+from .wrapper import *
+from .bias import HistogramBias

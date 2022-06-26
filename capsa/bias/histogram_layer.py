@@ -4,6 +4,10 @@ import tensorflow_probability as tfp
 
 
 class HistogramLayer(tf.keras.layers.Layer):
+    """A custom layer that tracks the distribution of feature values during training. 
+    Outputs the probability of a sample given this feature distribution at inferenfce time.
+    """
+
     def __init__(self, num_bins=5):
         super(HistogramLayer, self).__init__()
         self.num_bins = num_bins
@@ -11,13 +15,15 @@ class HistogramLayer(tf.keras.layers.Layer):
         self.edges = None
 
     def build(self, input_shape):
+        # Constructs the layer the first time that it is called
         self.frequencies = tf.Variable(
             initial_value=tf.zeros((self.num_bins, input_shape[-1])), trainable=False
         )
 
         self.feature_dim = input_shape[-1]
 
-    def call(self, inputs, training=None):
+    def call(self, inputs, training=True):
+        # Updates frequencies if we are training
         if training:
             if self.edges is None or self.reset_widths:
                 minimums = (
@@ -44,6 +50,9 @@ class HistogramLayer(tf.keras.layers.Layer):
             )
             self.frequencies.assign(tf.add(self.frequencies, histograms_this_batch))
         else:
+            # Returns the probability of a datapoint occurring if we are in inference mode
+
+            # Normalize histograms
             hist_probs = tf.divide(
                 self.frequencies, tf.reduce_sum(self.frequencies, axis=0)
             )
