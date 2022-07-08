@@ -5,20 +5,36 @@ from tensorflow.keras import layers
 
 
 class Wrapper():
-    def __init__(self, base_model, metrics=[]):  
+    """ This is a wrapper!
+
+    Args:
+        base_model (model): a model
+
+    """
+    def __init__(self, base_model, metrics=[]):
+
         self.metrics = metrics
         self.metrics_compiled = {}
 
         self.base_model = base_model
         self.feature_extractor = tf.keras.Model(base_model.inputs, base_model.layers[-2].output)
         self.optim = tf.keras.optimizers.Adam(learning_rate=2e-3)
-        
+
     def compile(self, optimizer, loss):
+        """ Compile the wrapper
+        
+        Args:
+            optimizer (optimizer): the optimizer
+
+            loss (fn): the loss function
+
+        """
+
         for i in range(len(self.metrics)):
             m = self.metrics[i](self.base_model, is_standalone=False)
             m.compile(optimizer=optimizer[i], loss=loss[i])
             self.metrics_compiled[m.metric_name] = m
-        
+
     @tf.function
     def train_step(self, x, y):
         features = self.feature_extractor(x)
@@ -53,7 +69,7 @@ class Wrapper():
             for _ in range(epochs):
                 for x, y in data:
                     print_grads = self.train_step(x, y)
-     
+
     def inference(self, x):
         out = {}
         features = self.feature_extractor(x, training=False)

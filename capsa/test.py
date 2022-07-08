@@ -33,7 +33,7 @@ def test_regression(use_case=None):
     ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
     elif use_case == 2:
 
-        # make 'controller' wrapper behave like a tf model, such that user can interact with it 
+        # make 'controller' wrapper behave like a tf model, such that user can interact with it
         # the same as they directly a any of the MetricWrappers (see 3 lines above)
         # so in controller Wrapper implement compile() and fit() methods
         model = Wrapper(their_model, metrics=[MVEWrapper])

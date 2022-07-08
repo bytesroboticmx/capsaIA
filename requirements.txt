@@ -1,0 +1,6 @@
+numpy
+tensorflow-gpu
+sphinx
+sphinx_rtd_theme
+sphinx-tabs
+furo
