@@ -38,24 +38,15 @@ class Wrapper():
     @tf.function
     def train_step(self, x, y):
         features = self.feature_extractor(x)
+        accum_grads = tf.zeros_like(features)
+        scalar = 1 / len(self.metrics)
 
-        grads = []
-        for i, metric_wrapper in enumerate(self.metrics_compiled.values()):
-            grad_wrt_feats = metric_wrapper.wrapped_train_step(x, y, features)
-            grads.append(grad_wrt_feats)
-
-        # take mean of grads wrt feature_extractor, looks ugly -- I'll fix it
-        # problem is that you can't easily convert it to a tensor (ragged tensor)
-        idx = len(self.metrics) - 1
-        out = [
-            tf.reduce_mean(
-                tf.concat([grads[0][i][None, ], grads[idx][i][None, ]], axis=0), axis=0,
-            )
-            for i in range(len(grads[0]))
-        ]
+        for metric_wrapper in self.metrics_compiled.values():
+            grad = metric_wrapper.wrapped_train_step(x, y, features)[0]
+            accum_grads += tf.scalar_mul(scalar, grad)
 
         trainable_vars = self.feature_extractor.trainable_variables
-        gradients = tf.gradients(features, trainable_vars, out)
+        gradients = tf.gradients(features, trainable_vars, accum_grads)
         self.optim.apply_gradients(zip(gradients, trainable_vars))
 
         return gradients
