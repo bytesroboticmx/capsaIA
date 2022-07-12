@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from wrapper import Wrapper
-from mve import MVEWrapper
 from histogram import HistogramWrapper
 
 from utils.utils import get_user_model, plt_vspan, plot_results
