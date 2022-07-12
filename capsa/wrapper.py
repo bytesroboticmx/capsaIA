@@ -4,10 +4,12 @@ import tensorflow as tf
 from tensorflow.keras import layers
 
 
-class Wrapper:
+class Wrapper(tf.keras.Model):
     def __init__(self, base_model, metrics=[]):
-        self.metrics = metrics
-        self.metrics_compiled = {}
+        super(Wrapper, self).__init__()
+
+        self.metric = metrics
+        self.metric_compiled = {}
 
         self.base_model = base_model
         self.feature_extractor = tf.keras.Model(
@@ -16,32 +18,36 @@ class Wrapper:
         self.optim = tf.keras.optimizers.Adam(learning_rate=2e-3)
 
     def compile(self, optimizer, loss):
-        for i in range(len(self.metrics)):
-            m = self.metrics[i](self.base_model, is_standalone=False)
+        super(Wrapper, self).compile()
+
+        for i in range(len(self.metric)):
+            m = self.metric[i](self.base_model, is_standalone=False)
             m.compile(optimizer=optimizer[i], loss=loss[i])
-            self.metrics_compiled[m.metric_name] = m
+            self.metric_compiled[m.metric_name] = m
 
     @tf.function
-    def train_step(self, x, y):
+    def train_step(self, data):
+        keras_metrics = {}
+        x, y = data
+
         features = self.feature_extractor(x)
         accum_grads = tf.zeros_like(features)
-        scalar = 1 / len(self.metrics)
+        scalar = 1 / len(self.metric)
 
-        for metric_wrapper in self.metrics_compiled.values():
-            grad = metric_wrapper.wrapped_train_step(x, y, features)[0]
+        for name, wrapper in self.metric_compiled.items():
+            grad = wrapper.wrapped_train_step(x, y, features)[0]
             accum_grads += tf.scalar_mul(scalar, grad)
+            keras_metrics[f"loss_{name}"] = wrapper.metrics[0].result()
 
         trainable_vars = self.feature_extractor.trainable_variables
         gradients = tf.gradients(features, trainable_vars, accum_grads)
         self.optim.apply_gradients(zip(gradients, trainable_vars))
-
-        return gradients
+        return keras_metrics
 
     def inference(self, x):
         out = {}
         features = self.feature_extractor(x, training=False)
 
-        for metric_name, metric_wrapper in self.metrics_compiled.items():
-            out[metric_name] = metric_wrapper.inference(x, features)
-
+        for name, wrapper in self.metric_compiled.items():
+            out[name] = wrapper.inference(x, features)
         return out

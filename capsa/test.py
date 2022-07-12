@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from wrapper import Wrapper
 from histogram import HistogramWrapper
-
+from mve import MVEWrapper
 from utils.utils import get_user_model, plt_vspan, plot_results
 from data.regression import get_data_v1, get_data_v2
 
@@ -100,7 +100,7 @@ def test_bias(use_case=None):
             ],
         )
 
-        model.fit(ds_train, epochs=1)
+        model.fit(ds_train, epochs=30)
 
         metrics_out = model.inference(x_val)
         y_pred, bias = metrics_out["HistogramWrapper"]
@@ -116,6 +116,6 @@ def test_bias(use_case=None):
 
 
 test_bias(use_case=1)
-# test_bias(use_case=2)
+test_bias(use_case=2)
 test_regression(use_case=1)
 test_regression(use_case=2)
