@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from wrapper import Wrapper
 from mve import MVEWrapper
 
-from utils.utils import get_user_model, plt_vspan, plot_results
+from utils.utils import get_user_model, plt_vspan, plot_results, plot_loss
 from data.regression import get_data_v1, get_data_v2
 
 
@@ -16,7 +16,7 @@ def test_regression(use_case=None):
     their_model = get_user_model()
     ds_train, x_val, y_val = get_data_v2(batch_size=256)
 
-    ### use case 1 - user can interact with a MetricWrapper directly
+    # user can interact with a MetricWrapper directly
     if use_case == 1:
         model = MVEWrapper(their_model)
         model.compile(
@@ -24,18 +24,15 @@ def test_regression(use_case=None):
             loss=tf.keras.losses.MeanSquaredError(),
         )
         history = model.fit(ds_train, epochs=30)
+        plot_loss(history)
 
         plt.plot(history.history['loss'])
         plt.show()
 
         y_pred, variance = model.inference(x_val)
 
-    ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
+    # user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
     elif use_case == 2:
-
-        # make 'controller' wrapper behave like a tf model, such that user can interact with it
-        # the same as they directly a any of the MetricWrappers (see 3 lines above)
-        # so in controller Wrapper implement compile() and fit() methods
         model = Wrapper(their_model, metrics=[MVEWrapper])
 
         model.compile(
@@ -45,7 +42,8 @@ def test_regression(use_case=None):
             loss=[tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)],
         )
 
-        model.fit(ds_train, epochs=30, is_batched=True)
+        history= model.fit(ds_train, epochs=30)
+        plot_loss(history)
 
         metrics_out = model.inference(x_val)
         y_pred, variance = metrics_out['MVEWrapper']

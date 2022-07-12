@@ -25,6 +25,12 @@ def get_user_model():
         layers.Dense(16, 'relu'), 
         layers.Dense(1, None),
     ])
+
+def plot_loss(history):
+    for k, v in history.history.items():
+        plt.plot(v, label=k)
+    plt.legend(loc='upper right')
+    plt.show()
     
 def plt_vspan():
     plt.axvspan(-6, -4, ec='black', color='grey', linestyle='--', alpha=0.3, zorder=3)
