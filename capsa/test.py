@@ -42,11 +42,11 @@ def test_regression(use_case=None):
             loss=[tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)],
         )
 
-        history= model.fit(ds_train, epochs=30)
+        history = model.fit(ds_train, epochs=30)
         plot_loss(history)
 
-        metrics_out = model.inference(x_val)
-        y_pred, variance = metrics_out['MVEWrapper']
+        metrics_out = model(x_val)
+        y_pred, variance = metrics_out[0]
 
     fig, axs = plt.subplots(2)
     axs[0].scatter(x_val, y_val, s=.5, label="gt")
