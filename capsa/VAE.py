@@ -27,18 +27,18 @@ class VAEWrapper(keras.Model):
 
         self.decoder = decoder
 
-    def reconstruction_loss(self, mu, log_std, y):
+    def reconstruction_loss(self, mu, log_std, x):
 
         sampled_latent_vector = self.sampling_layer([mu, log_std])
 
         # reconstruction loss:
         reconstruction = self.decoder(sampled_latent_vector)
         mse_loss = tf.reduce_mean(
-            tf.reduce_sum(tf.math.square(reconstruction - y), axis=0)
+            tf.reduce_sum(tf.math.square(reconstruction - x), axis=-1)
         )
         kl_loss = -0.5 * tf.reduce_mean(
             1 + log_std - tf.math.square(mu) - tf.math.square(tf.math.exp(log_std)),
-            axis=0,
+            axis=-1,
         )
         return mse_loss + kl_loss
 
@@ -48,14 +48,14 @@ class VAEWrapper(keras.Model):
 
         predictor_y = self.output_layer(extractor_out)
 
-        compiled_loss = tf.reduce_mean(
+        compiled_loss = (
             self.compiled_loss(y, predictor_y, regularization_losses=self.losses),
         )
 
         mu = self.mean_layer(extractor_out)
         log_std = self.log_std_layer(extractor_out)
-        recon_loss = self.reconstruction_loss(mu=mu, log_std=log_std, y=y)
-        return recon_loss + compiled_loss, predictor_y
+        recon_loss = self.reconstruction_loss(mu=mu, log_std=log_std, x=x)
+        return tf.reduce_mean(recon_loss + compiled_loss), predictor_y
 
     def train_step(self, data):
         x, y = data
@@ -89,4 +89,4 @@ class VAEWrapper(keras.Model):
 
         out = self.output_layer(extractor_out)
 
-        return out, mu, log_std
+        return out, self.reconstruction_loss(mu, log_std, x)

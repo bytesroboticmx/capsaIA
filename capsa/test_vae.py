@@ -28,7 +28,7 @@ def test_vae(use_case=None):
         plt.plot(history.history["loss"])
         plt.show()
 
-        y_pred, mu, log_std = model.inference(x_val)
+        y_pred, recon_loss = model.inference(x_val)
 
     ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
     elif use_case == 2:
@@ -52,11 +52,13 @@ def test_vae(use_case=None):
         model.fit(ds_train, epochs=30)
 
         metrics_out = model.inference(x_val)
-        y_pred, mu, log_std = metrics_out["HistogramWrapper"]
+        y_pred, recon_loss = metrics_out["VAEWrapper"]
 
     fig, axs = plt.subplots(2)
     axs[0].scatter(x_val, y_val, s=0.5, label="gt")
     axs[0].scatter(x_val, y_pred, s=0.5, label="yhat")
+    plt_vspan()
+    axs[1].scatter(x_val, recon_loss, s=0.5, label="bias")
     plt_vspan()
     plt.legend()
     plt.show()
