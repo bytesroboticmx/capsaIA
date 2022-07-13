@@ -116,6 +116,6 @@ def test_bias(use_case=None):
 
 
 test_bias(use_case=1)
-test_bias(use_case=2)
-test_regression(use_case=1)
-test_regression(use_case=2)
+#test_bias(use_case=2)
+#test_regression(use_case=1)
+#test_regression(use_case=2)
