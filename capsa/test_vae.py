@@ -1,6 +1,4 @@
 import tensorflow as tf
-from tensorflow.keras import layers
-
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -13,12 +11,11 @@ from data.regression import get_data_v1, get_data_v2
 def test_vae(use_case=None):
 
     their_model = get_user_model()
-    decoder = get_decoder()
     ds_train, x_val, y_val = get_data_v2(batch_size=256)
 
     ### use case 1 - user can interact with a MetricWrapper directly
     if use_case == 1:
-        model = VAEWrapper(their_model, decoder)
+        model = VAEWrapper(their_model)
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
             loss=tf.keras.losses.MeanSquaredError(),

@@ -1,31 +1,30 @@
 from random import sample
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers
 
-from utils.utils import Sampling, duplicate_layer
+from utils.utils import Sampling, duplicate_layer, reverse_model, _get_out_dim
 
 
 class VAEWrapper(keras.Model):
-    def __init__(self, base_model, decoder, is_standalone=True, latent_dim=32):
+    def __init__(self, base_model, is_standalone=True):
         super(VAEWrapper, self).__init__()
 
         self.metric_name = "VAEWrapper"
         self.is_standalone = is_standalone
 
-        if is_standalone:
-            self.feature_extractor = tf.keras.Model(
-                base_model.inputs, base_model.layers[-2].output
-            )
+        self.feature_extractor = tf.keras.Model(
+            base_model.inputs, base_model.layers[-2].output
+        )
 
-        self.mean_layer = tf.keras.layers.Dense(latent_dim)
-        self.log_std_layer = tf.keras.layers.Dense(latent_dim)
+        latent_dim = _get_out_dim(self.feature_extractor)
+        self.mean_layer = tf.keras.layers.Dense(latent_dim[-1])
+        self.log_std_layer = tf.keras.layers.Dense(latent_dim[-1])
         self.sampling_layer = Sampling()
 
         last_layer = base_model.layers[-1]
         self.output_layer = duplicate_layer(last_layer)  # duplicate last layer
 
-        self.decoder = decoder
+        self.decoder = reverse_model(self.feature_extractor, latent_dim=latent_dim)
 
     def reconstruction_loss(self, mu, log_std, x):
 
@@ -43,7 +42,7 @@ class VAEWrapper(keras.Model):
         return mse_loss + kl_loss
 
     def loss_fn(self, x, y, extractor_out=None):
-        if self.is_standalone:
+        if extractor_out is None:
             extractor_out = self.feature_extractor(x, training=True)
 
         predictor_y = self.output_layer(extractor_out)
@@ -84,9 +83,16 @@ class VAEWrapper(keras.Model):
         if self.is_standalone:
             extractor_out = self.feature_extractor(x, training=False)
 
-        mu = self.mean_layer(extractor_out)
-        log_std = self.log_std_layer(extractor_out)
+        mu = self.mean_layer(extractor_out, training=False)
+        log_std = self.log_std_layer(extractor_out, training=False)
 
-        out = self.output_layer(extractor_out)
+        out = self.output_layer(extractor_out, training=False)
 
         return out, self.reconstruction_loss(mu, log_std, x)
+
+    def input_to_histogram(self, extractor_out, training=None):
+        mu = self.mean_layer(extractor_out, training=training)
+        log_std = self.log_std_layer(extractor_out, training=training)
+        out = self.output_layer(extractor_out, training=training)
+
+        return mu
