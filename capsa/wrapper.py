@@ -54,10 +54,10 @@ class Wrapper(tf.keras.Model):
         gradients = tf.gradients(features, trainable_vars, accum_grads)
         self.optim.apply_gradients(zip(gradients, trainable_vars))
         return keras_metrics
-     
+    
     def call(self, x, training=False, return_risk=True):
         out = []
         features = self.feature_extractor(x, training)
         for wrapper in self.metric_compiled.values():
-            out.append(wrapper(x, features, training, return_risk))
+            out.append(wrapper(x, training, return_risk, features))
         return out

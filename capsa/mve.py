@@ -64,7 +64,7 @@ class MVEWrapper(keras.Model):
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
         return tf.gradients(loss, features)
     
-    def call(self, x,  features=None, training=False, return_risk=True):
+    def call(self, x, training=False, return_risk=True, features=None):
         if self.is_standalone:
             features = self.feature_extractor(x, training)
 
