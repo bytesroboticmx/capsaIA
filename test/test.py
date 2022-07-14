@@ -1,15 +1,10 @@
 import tensorflow as tf
 from tensorflow.keras import layers
-
-import numpy as np
 import matplotlib.pyplot as plt
 
-from wrapper import Wrapper
-from mve import MVEWrapper
-
-from utils.utils import get_user_model, plt_vspan, plot_results
-from data.regression import get_data_v1, get_data_v2
-
+from capsa import Wrapper, MVEWrapper
+from capsa.utils import get_user_model, plt_vspan, plot_results
+from data import get_data_v1, get_data_v2
 
 def test_regression(use_case=None):
 
