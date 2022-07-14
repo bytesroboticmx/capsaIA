@@ -73,15 +73,14 @@ def test_bias_chained():
     )
     history = model.fit(ds_train, epochs=30)
 
-    plt.plot(history.history["loss"])
-    plt.show()
-
     y_pred, bias = model.inference(x_val)
-    fig, axs = plt.subplots(2)
+    y_pred, recon_loss = model.metric_wrapper.inference(x_val)
+    fig, axs = plt.subplots(3)
     axs[0].scatter(x_val, y_val, s=0.5, label="gt")
     axs[0].scatter(x_val, y_pred, s=0.5, label="yhat")
     plt_vspan()
     axs[1].scatter(x_val, bias, s=0.5, label="bias")
+    axs[2].scatter(x_val, recon_loss, s=0.5, label="recon loss")
     plt_vspan()
     plt.legend()
     plt.show()

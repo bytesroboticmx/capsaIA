@@ -25,13 +25,15 @@ class HistogramWrapper(keras.Model):
         self.metric_wrapper = metric_wrapper
 
     def compile(self, optimizer, loss):
-        super(HistogramWrapper, self).compile(optimizer=optimizer, loss=loss)
         if self.metric_wrapper is not None:
             self.metric_wrapper = self.metric_wrapper(
                 base_model=self.base_model, is_standalone=self.is_standalone,
             )
-            self.metric_wrapper.compile(optimizer=optimizer, loss=loss)
             self.output_layer = self.metric_wrapper.output_layer
+            self.feature_extractor = self.metric_wrapper.feature_extractor
+            self.metric_wrapper.compile(optimizer=optimizer, loss=loss)
+
+        super(HistogramWrapper, self).compile(optimizer=optimizer, loss=loss)
 
     def loss_fn(self, x, y, extractor_out=None):
         if extractor_out is None:
