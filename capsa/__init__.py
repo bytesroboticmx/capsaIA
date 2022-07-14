@@ -1,10 +1,13 @@
+""" Top-level package for capsa. """
+
+# Controller
 from .wrapper import Wrapper
 
 # Bias
 pass
 
 # Aleatoric
-from .mve import MVEWrapper
+from .aleatoric import MVEWrapper
 
 # Epistemic
 pass

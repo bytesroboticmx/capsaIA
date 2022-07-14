@@ -1,13 +1,11 @@
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.keras import layers
 
 def MLP(in_dim, emb_dim, trainable=True):
     return tf.keras.Sequential([
-        keras.Input(shape=(in_dim, )),
+        tf.keras.Input(shape=(in_dim, )),
         layers.Dense(32, 'relu', trainable=trainable), 
         layers.Dense(32, 'relu', trainable=trainable), 
         layers.Dense(32, 'relu', trainable=trainable), 
