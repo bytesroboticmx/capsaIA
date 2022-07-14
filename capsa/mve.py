@@ -20,7 +20,8 @@ class MVEWrapper(keras.Model):
             extractor_out_dim = base_model.layers[-2].output.shape[1]
         
         model_out_dim = _get_out_dim(base_model)
-        self.output_layer = MLP(extractor_out_dim, (2 + model_out_dim)) # two is for mu and sigma
+        self.dense1 = layers.Dense(model_out_dim)
+        self.dense2 = layers.Dense(2) # mu and sigma
 
     @staticmethod
     def neg_log_likelihood(y, mu, logvariance):
@@ -31,9 +32,8 @@ class MVEWrapper(keras.Model):
         if self.is_standalone:
             features = self.feature_extractor(x, training=True)
 
-        out = self.output_layer(features)
-        mu, logvariance = out[:, 0:1], out[:, 1:2]
-        y_hat = out[:, 2:]
+        y_hat = self.dense1(features)
+        mu, logvariance = tf.split(self.dense2(features), 2, 1) # (B, 2) -> (B, 1), (B, 1)
 
         loss = tf.reduce_mean(
             self.compiled_loss(y, y_hat, regularization_losses=self.losses),
@@ -71,9 +71,8 @@ class MVEWrapper(keras.Model):
     def call(self, x,  features=None, training=False, return_risk=True):
         if self.is_standalone:
             features = self.feature_extractor(x, training)
-            
-        out = self.output_layer(features)
-        mu, logvariance = out[:, 0:1], out[:, 1:2]
-        y_hat = out[:, 2:]
+
+        y_hat = self.dense1(features)
+        mu, logvariance = tf.split(self.dense2(features), 2, 1)
 
         return (y_hat, tf.exp(logvariance)) if return_risk else y_hat
