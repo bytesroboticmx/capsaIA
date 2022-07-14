@@ -1,12 +1,10 @@
+import numpy as np
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras import layers
 
-import numpy as np
-import matplotlib.pyplot as plt
-
 from wrapper import Wrapper
 from mve import MVEWrapper
-
 from utils.utils import get_user_model, plt_vspan, plot_results, plot_loss
 from data.regression import get_data_v1, get_data_v2
 
@@ -28,8 +26,8 @@ def test_regression(use_case=None):
 
         plt.plot(history.history['loss'])
         plt.show()
-
-        y_pred, variance = model.inference(x_val)
+        
+        y_pred, variance = model(x_val)
 
     # user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
     elif use_case == 2:

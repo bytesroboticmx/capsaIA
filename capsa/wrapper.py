@@ -1,5 +1,4 @@
 import numpy as np
-
 import tensorflow as tf
 from tensorflow.keras import layers
 
@@ -56,9 +55,9 @@ class Wrapper(tf.keras.Model):
         self.optim.apply_gradients(zip(gradients, trainable_vars))
         return keras_metrics
      
-    def call(self, x, training):
+    def call(self, x, training=False, return_risk=True):
         out = []
         features = self.feature_extractor(x, training)
         for wrapper in self.metric_compiled.values():
-            out.append(wrapper.inference(x, features))
+            out.append(wrapper(x, features, training, return_risk))
         return out

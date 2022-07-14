@@ -27,53 +27,53 @@ class MVEWrapper(keras.Model):
         variance = tf.exp(logvariance)
         return logvariance + (y-mu)**2 / variance
 
-    def loss_fn(self, x, y, extractor_out=None):
+    def loss_fn(self, x, y, features=None):
         if self.is_standalone:
-            extractor_out = self.feature_extractor(x, training=True)
+            features = self.feature_extractor(x, training=True)
 
-        out = self.output_layer(extractor_out)
+        out = self.output_layer(features)
         mu, logvariance = out[:, 0:1], out[:, 1:2]
-        predictor_y = out[:, 2:]
+        y_hat = out[:, 2:]
 
         loss = tf.reduce_mean(
-            self.compiled_loss(y, predictor_y, regularization_losses=self.losses),
+            self.compiled_loss(y, y_hat, regularization_losses=self.losses),
         )
 
         loss += tf.reduce_mean(
             self.neg_log_likelihood(y, mu, logvariance)
         )
         
-        return loss, predictor_y
+        return loss, y_hat
 
     def train_step(self, data):
         x, y = data
 
         with tf.GradientTape() as t:
-            loss, predictor_y = self.loss_fn(x, y)
+            loss, y_hat = self.loss_fn(x, y)
 
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-        self.compiled_metrics.update_state(y, predictor_y)
+        self.compiled_metrics.update_state(y, y_hat)
         return {m.name: m.result() for m in self.metrics}
 
     @tf.function
-    def wrapped_train_step(self, x, y, extractor_out):
+    def wrapped_train_step(self, x, y, features):
         with tf.GradientTape() as t:
-            loss, predictor_y = self.loss_fn(x, y, extractor_out)
+            loss, y_hat = self.loss_fn(x, y, features)
 
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 
-        return tf.gradients(loss, extractor_out)
+        return tf.gradients(loss, features)
     
-    def inference(self, x, extractor_out=None):
+    def call(self, x,  features=None, training=False, return_risk=True):
         if self.is_standalone:
-            extractor_out = self.feature_extractor(x, training=False)
-
-        out = self.output_layer(extractor_out)
+            features = self.feature_extractor(x, training)
+            
+        out = self.output_layer(features)
         mu, logvariance = out[:, 0:1], out[:, 1:2]
-        predictor_y = out[:, 2:]
+        y_hat = out[:, 2:]
 
-        return predictor_y, tf.exp(logvariance)
+        return (y_hat, tf.exp(logvariance)) if return_risk else y_hat
