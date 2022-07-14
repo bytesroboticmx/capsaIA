@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from utils.utils import MLP, _get_out_dim
+from utils.utils import MLP, _get_out_dim, layer_from_conf
 
 
 class MVEWrapper(keras.Model):
@@ -16,10 +16,10 @@ class MVEWrapper(keras.Model):
         if is_standalone:
             self.feature_extractor = tf.keras.Model(base_model.inputs, base_model.layers[-2].output)
 
-        out_dim = _get_out_dim(base_model)
-        self.dense1 = layers.Dense(out_dim)
-        self.dense2 = layers.Dense(out_dim)
-        self.dense3 = layers.Dense(out_dim)
+        layer = base_model.layers[-1]
+        self.dense1 = layer_from_conf(layer)
+        self.dense2 = layer_from_conf(layer, True)
+        self.dense3 = layer_from_conf(layer, True)
 
     @staticmethod
     def neg_log_likelihood(y, mu, logvariance):
@@ -60,7 +60,6 @@ class MVEWrapper(keras.Model):
     def wrapped_train_step(self, x, y, features):
         with tf.GradientTape() as t:
             loss, y_hat = self.loss_fn(x, y, features)
-
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
