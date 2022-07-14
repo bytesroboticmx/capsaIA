@@ -65,7 +65,6 @@ class MVEWrapper(keras.Model):
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-
         return tf.gradients(loss, features)
     
     def call(self, x,  features=None, training=False, return_risk=True):
@@ -73,6 +72,6 @@ class MVEWrapper(keras.Model):
             features = self.feature_extractor(x, training)
 
         y_hat = self.dense1(features)
-        mu, logvariance = tf.split(self.dense2(features), 2, 1)
-
+        if return_risk:
+            mu, logvariance = tf.split(self.dense2(features), 2, 1)
         return (y_hat, tf.exp(logvariance)) if return_risk else y_hat
