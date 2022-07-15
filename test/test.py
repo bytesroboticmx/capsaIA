@@ -3,10 +3,9 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras import layers
 
-from wrapper import Wrapper
-from mve import MVEWrapper
-from utils.utils import get_user_model, plt_vspan, plot_results, plot_loss
-from data.regression import get_data_v1, get_data_v2
+from capsa import Wrapper, MVEWrapper
+from capsa.utils import get_user_model, plt_vspan, plot_results, plot_loss
+from data import get_data_v1, get_data_v2
 
 def plot_aleatoric(x_val, y_val, y_pred, variance):
     fig, axs = plt.subplots(2)

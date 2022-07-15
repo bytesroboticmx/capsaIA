@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from utils.utils import MLP, _get_out_dim, layer_from_conf
+from ..utils import MLP, _get_out_dim, layer_from_conf
 
 
 class MVEWrapper(keras.Model):

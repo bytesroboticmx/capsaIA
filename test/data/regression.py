@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils.utils import plt_vspan
+from capsa.utils import plt_vspan
 
 def get_data_v1():
     np.random.seed(5)
