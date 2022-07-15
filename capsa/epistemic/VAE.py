@@ -2,7 +2,7 @@ from random import sample
 import tensorflow as tf
 from tensorflow import keras
 
-from utils.utils import Sampling, duplicate_layer, reverse_model, _get_out_dim
+from ..utils import Sampling, copy_layer, reverse_model, _get_out_dim
 
 
 class VAEWrapper(keras.Model):
@@ -23,13 +23,10 @@ class VAEWrapper(keras.Model):
         self.sampling_layer = Sampling()
 
         last_layer = base_model.layers[-1]
-        self.output_layer = duplicate_layer(last_layer)  # duplicate last layer
+        self.output_layer = copy_layer(last_layer)  # duplicate last layer
 
         # Reverse model if we can, accept user decoder if we cannot
-        if (
-            type(self.feature_extractor) == tf.keras.Functional
-            or type(self.feature_extractor) == tf.keras.Sequential
-        ):
+        if hasattr(self.feature_extractor, "layers"):
             self.decoder = reverse_model(self.feature_extractor, latent_dim=latent_dim)
         else:
             if decoder is None:
@@ -92,16 +89,18 @@ class VAEWrapper(keras.Model):
 
         return tf.gradients(loss, extractor_out)
 
-    def inference(self, x, extractor_out=None):
+    def call(self, x, training=False, return_risk=True, features=None):
         if self.is_standalone:
-            extractor_out = self.feature_extractor(x, training=False)
+            features = self.feature_extractor(x, training=training)
 
-        mu = self.mean_layer(extractor_out, training=False)
-        log_std = self.log_std_layer(extractor_out, training=False)
+        out = self.output_layer(features, training=training)
 
-        out = self.output_layer(extractor_out, training=False)
-
-        return out, self.reconstruction_loss(mu, log_std, x)
+        if return_risk:
+            mu = self.mean_layer(features, training=training)
+            log_std = self.log_std_layer(features, training=training)
+            return out, self.reconstruction_loss(mu, log_std, x)
+        else:
+            return out
 
     def input_to_histogram(self, extractor_out, training=None):
         # Needed to interface with the Histogram metric.

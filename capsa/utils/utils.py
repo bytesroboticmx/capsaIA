@@ -1,15 +1,13 @@
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.keras import layers
 
 
 def MLP(in_dim, emb_dim, trainable=True):
     return tf.keras.Sequential(
         [
-            keras.Input(shape=(in_dim,)),
+            tf.keras.Input(shape=(in_dim,)),
             layers.Dense(32, "relu", trainable=trainable),
             layers.Dense(32, "relu", trainable=trainable),
             layers.Dense(32, "relu", trainable=trainable),
@@ -26,6 +24,7 @@ def get_user_model():
             layers.Dense(16, "relu"),
             layers.Dense(32, "relu"),
             layers.Dense(64, "relu"),
+            layers.Dense(32, "relu"),
             layers.Dense(16, "relu"),
             layers.Dense(1, None),
         ]
@@ -44,6 +43,13 @@ def get_decoder():
             layers.Dense(1, None),
         ]
     )
+
+
+def plot_loss(history):
+    for k, v in history.history.items():
+        plt.plot(v, label=k)
+    plt.legend(loc="upper right")
+    plt.show()
 
 
 def plt_vspan():
@@ -84,15 +90,6 @@ class Sampling(layers.Layer):
         dim = tf.shape(z_mean)[1]
         epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
-
-
-def duplicate_layer(layer):
-    config = layer.get_config()
-    weights = layer.get_weights()
-    output_layer = type(layer).from_config(config)
-    output_layer.build(layer.input_shape)
-    output_layer.set_weights(weights)
-    return output_layer
 
 
 def reverse_model(model, latent_dim):
@@ -164,3 +161,13 @@ def reverse_layer(layer, output_shape=None):
             return layers.Conv3DTranspose.from_config(config)
     else:
         raise NotImplementedError()
+
+
+def copy_layer(layer, override_activation=None):
+    # if no_activation is False, layer might or
+    # might not have activation (depending on the config)
+    layer_conf = layer.get_config()
+    if override_activation:
+        layer_conf["activation"] = override_activation
+    # works for any serializable layer
+    return type(layer).from_config(layer_conf)

@@ -1,10 +1,16 @@
 import numpy as np
-
 import tensorflow as tf
 from tensorflow.keras import layers
 
 
 class Wrapper(tf.keras.Model):
+    """ This is a wrapper!
+
+    Args:
+        base_model (model): a model
+
+    """
+
     def __init__(self, base_model, metrics=[]):
         super(Wrapper, self).__init__()
 
@@ -44,10 +50,9 @@ class Wrapper(tf.keras.Model):
         self.optim.apply_gradients(zip(gradients, trainable_vars))
         return keras_metrics
 
-    def inference(self, x):
-        out = {}
-        features = self.feature_extractor(x, training=False)
-
-        for name, wrapper in self.metric_compiled.items():
-            out[name] = wrapper.inference(x, features)
+    def call(self, x, training=False, return_risk=True):
+        out = []
+        features = self.feature_extractor(x, training)
+        for wrapper in self.metric_compiled.values():
+            out.append(wrapper(x, training, return_risk, features))
         return out

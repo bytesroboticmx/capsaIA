@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils.utils import plt_vspan
+from capsa.utils import plt_vspan
 
 def get_data_v1():
     np.random.seed(5)
@@ -40,10 +40,18 @@ def get_data_v2(batch_size=256):
     plt.legend()
     plt.show()
 
-    ds_train = tf.data.Dataset.from_tensor_slices((x.astype(np.float32), y.astype(np.float32)))
-    ds_train = ds_train.cache()
-    ds_train = ds_train.shuffle(x.shape[0])
-    ds_train = ds_train.batch(batch_size)
-    ds_train = ds_train.prefetch(tf.data.AUTOTUNE)
+    def _get_ds(x, y, shuffle=True):
+        ds = tf.data.Dataset.from_tensor_slices((x.astype(np.float32), y.astype(np.float32)))
+        ds = ds.cache()
+        if shuffle:
+            ds = ds.shuffle(x.shape[0])
+        ds = ds.batch(batch_size)
+        ds = ds.prefetch(tf.data.AUTOTUNE)
 
-    return ds_train, x_val, y_val
+        return ds
+    
+    ds_train = _get_ds(x, y)
+    ds_val = _get_ds(x_val, y_val, False)
+
+    # return x_val y_val as well, to test models on both batched and not batched inputs
+    return ds_train, ds_val, x_val, y_val
