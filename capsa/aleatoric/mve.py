@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from ..utils import MLP, _get_out_dim
+from ..utils import MLP, _get_out_dim, copy_layer
 
 
 class MVEWrapper(keras.Model):
@@ -14,66 +14,67 @@ class MVEWrapper(keras.Model):
         self.is_standalone = is_standalone
 
         if is_standalone:
-            self.feature_extractor = tf.keras.Model(base_model.inputs, base_model.layers[-2].output)
-            extractor_out_dim = _get_out_dim(self.feature_extractor)
-        else:
-            extractor_out_dim = base_model.layers[-2].output.shape[1]
-        
-        model_out_dim = _get_out_dim(base_model)
-        self.output_layer = MLP(extractor_out_dim, (2 + model_out_dim)) # two is for mu and sigma
+            self.feature_extractor = tf.keras.Model(
+                inputs=base_model.inputs,
+                outputs=base_model.layers[-2].output)
+
+        output_layer = base_model.layers[-1]
+        self.out_y = copy_layer(output_layer)
+        self.out_mu = copy_layer(output_layer, override_activation="linear")
+        self.out_logvar = copy_layer(output_layer, override_activation="linear")
 
     @staticmethod
     def neg_log_likelihood(y, mu, logvariance):
         variance = tf.exp(logvariance)
         return logvariance + (y-mu)**2 / variance
 
-    def loss_fn(self, x, y, extractor_out=None):
+    def loss_fn(self, x, y, features=None):
         if self.is_standalone:
-            extractor_out = self.feature_extractor(x, training=True)
+            features = self.feature_extractor(x, training=True)
 
-        out = self.output_layer(extractor_out)
-        mu, logvariance = out[:, 0:1], out[:, 1:2]
-        predictor_y = out[:, 2:]
+        y_hat = self.out_y(features)
+        mu = self.out_mu(features)
+        logvariance = self.out_logvar(features)
 
         loss = tf.reduce_mean(
-            self.compiled_loss(y, predictor_y, regularization_losses=self.losses),
+            self.compiled_loss(y, y_hat, regularization_losses=self.losses),
         )
 
         loss += tf.reduce_mean(
             self.neg_log_likelihood(y, mu, logvariance)
         )
-        
-        return loss, predictor_y
+
+        return loss, y_hat
 
     def train_step(self, data):
         x, y = data
 
         with tf.GradientTape() as t:
-            loss, predictor_y = self.loss_fn(x, y)
+            loss, y_hat = self.loss_fn(x, y)
 
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-        self.compiled_metrics.update_state(y, predictor_y)
+        self.compiled_metrics.update_state(y, y_hat)
         return {m.name: m.result() for m in self.metrics}
 
     @tf.function
-    def wrapped_train_step(self, x, y, extractor_out):
+    def wrapped_train_step(self, x, y, features):
         with tf.GradientTape() as t:
-            loss, predictor_y = self.loss_fn(x, y, extractor_out)
-
+            loss, y_hat = self.loss_fn(x, y, features)
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+        return tf.gradients(loss, features)
 
-        return tf.gradients(loss, extractor_out)
-    
-    def inference(self, x, extractor_out=None):
+    def call(self, x, training=False, return_risk=True, features=None):
         if self.is_standalone:
-            extractor_out = self.feature_extractor(x, training=False)
+            features = self.feature_extractor(x, training)
+        y_hat = self.out_y(features)
 
-        out = self.output_layer(extractor_out)
-        mu, logvariance = out[:, 0:1], out[:, 1:2]
-        predictor_y = out[:, 2:]
-
-        return predictor_y, tf.exp(logvariance)
+        if return_risk:
+            logvariance = self.out_logvar(features)
+            variance = tf.exp(logvariance)
+            return (y_hat, variance)
+        else:
+            return y_hat
