@@ -2,7 +2,7 @@ from numpy import histogram
 import tensorflow as tf
 from tensorflow import keras
 from histogram_layer import HistogramLayer
-from utils.utils import duplicate_layer
+from utils.utils import copy_layer
 
 
 class HistogramWrapper(keras.Model):
@@ -28,7 +28,7 @@ class HistogramWrapper(keras.Model):
             )
 
         last_layer = base_model.layers[-1]
-        self.output_layer = duplicate_layer(last_layer)  # duplicate last layer
+        self.output_layer = copy_layer(last_layer)  # duplicate last layer
         self.histogram_layer = HistogramLayer(num_bins=num_bins)
 
         self.metric_wrapper = metric_wrapper

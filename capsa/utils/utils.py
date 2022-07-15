@@ -1,15 +1,13 @@
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.keras import layers
 
 
 def MLP(in_dim, emb_dim, trainable=True):
     return tf.keras.Sequential(
         [
-            keras.Input(shape=(in_dim,)),
+            tf.keras.Input(shape=(in_dim,)),
             layers.Dense(32, "relu", trainable=trainable),
             layers.Dense(32, "relu", trainable=trainable),
             layers.Dense(32, "relu", trainable=trainable),
@@ -31,6 +29,13 @@ def get_user_model():
             layers.Dense(1, None),
         ]
     )
+
+
+def plot_loss(history):
+    for k, v in history.history.items():
+        plt.plot(v, label=k)
+    plt.legend(loc="upper right")
+    plt.show()
 
 
 def plt_vspan():
@@ -62,10 +67,11 @@ def _get_out_dim(model):
     return model.layers[-1].output_shape[1]
 
 
-def duplicate_layer(layer):
-    config = layer.get_config()
-    weights = layer.get_weights()
-    output_layer = type(layer).from_config(config)
-    output_layer.build(layer.input_shape)
-    output_layer.set_weights(weights)
-    return output_layer
+def copy_layer(layer, override_activation=None):
+    # if no_activation is False, layer might or
+    # might not have activation (depending on the config)
+    layer_conf = layer.get_config()
+    if override_activation:
+        layer_conf["activation"] = override_activation
+    # works for any serializable layer
+    return type(layer).from_config(layer_conf)
