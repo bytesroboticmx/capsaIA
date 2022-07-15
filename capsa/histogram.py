@@ -2,11 +2,20 @@ from numpy import histogram
 import tensorflow as tf
 from tensorflow import keras
 from histogram_layer import HistogramLayer
-from VAE import VAEWrapper
-from utils.utils import duplicate_layer, get_decoder
+from utils.utils import duplicate_layer
 
 
 class HistogramWrapper(keras.Model):
+    """
+        A wrapper that generates feature histograms for a given model.
+
+        Args:
+            base_model (model): the model to generate features from
+            metric_wrapper: currently can only be a VAE and the 
+                histogram will be constructed with these features instead if not None.
+            num_bins: how many bins to use in the histogram
+    """
+
     def __init__(self, base_model, is_standalone=True, num_bins=5, metric_wrapper=None):
         super(HistogramWrapper, self).__init__()
         self.base_model = base_model
@@ -25,13 +34,16 @@ class HistogramWrapper(keras.Model):
         self.metric_wrapper = metric_wrapper
 
     def compile(self, optimizer, loss):
-        super(HistogramWrapper, self).compile(optimizer=optimizer, loss=loss)
+        # replace the given feature extractor with the metric wrapper's extractor if provided
         if self.metric_wrapper is not None:
             self.metric_wrapper = self.metric_wrapper(
                 base_model=self.base_model, is_standalone=self.is_standalone,
             )
-            self.metric_wrapper.compile(optimizer=optimizer, loss=loss)
             self.output_layer = self.metric_wrapper.output_layer
+            self.feature_extractor = self.metric_wrapper.feature_extractor
+            self.metric_wrapper.compile(optimizer=optimizer, loss=loss)
+
+        super(HistogramWrapper, self).compile(optimizer=optimizer, loss=loss)
 
     def loss_fn(self, x, y, extractor_out=None):
         if extractor_out is None:
@@ -80,6 +92,7 @@ class HistogramWrapper(keras.Model):
 
         hist_input = extractor_out
         if self.metric_wrapper is not None:
+            # get the correct inputs to histogram if we have an additional metric
             hist_input = self.metric_wrapper.input_to_histogram(
                 extractor_out, training=False
             )
