@@ -1,8 +1,8 @@
 from numpy import histogram
 import tensorflow as tf
 from tensorflow import keras
-from histogram_layer import HistogramLayer
-from utils.utils import copy_layer
+from .histogram_layer import HistogramLayer
+from ..utils import copy_layer
 
 
 class HistogramWrapper(keras.Model):
@@ -86,18 +86,18 @@ class HistogramWrapper(keras.Model):
 
         return tf.gradients(loss, extractor_out)
 
-    def inference(self, x, extractor_out=None):
+    def call(self, x, training=False, return_risk=True, features=None):
         if self.is_standalone:
-            extractor_out = self.feature_extractor(x, training=False)
+            features = self.feature_extractor(x, training=False)
 
-        hist_input = extractor_out
+        hist_input = features
         if self.metric_wrapper is not None:
             # get the correct inputs to histogram if we have an additional metric
             hist_input = self.metric_wrapper.input_to_histogram(
-                extractor_out, training=False
+                features, training=False
             )
 
-        predictor_y = self.output_layer(extractor_out)
+        predictor_y = self.output_layer(features)
         bias = self.histogram_layer(hist_input, training=False)
 
         return predictor_y, bias

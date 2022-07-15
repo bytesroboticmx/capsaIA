@@ -4,7 +4,7 @@
 from .wrapper import Wrapper
 
 # Bias
-pass
+from .bias import HistogramWrapper
 
 # Aleatoric
 from .aleatoric import MVEWrapper
