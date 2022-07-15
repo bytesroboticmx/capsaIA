@@ -29,7 +29,7 @@ def plot_loss(history):
         plt.plot(v, label=k)
     plt.legend(loc='upper right')
     plt.show()
-    
+
 def plt_vspan():
     plt.axvspan(-6, -4, ec='black', color='grey', linestyle='--', alpha=0.3, zorder=3)
     plt.axvspan(4, 6, ec='black', color='grey', linestyle='--', alpha=0.3, zorder=3)
@@ -54,11 +54,11 @@ def plot_results(x, y, x_val, y_val, y_pred, epistemic, k=3):
 def _get_out_dim(model):
     return model.layers[-1].output_shape[1]
 
-def layer_from_conf(layer, no_activation=False):
+def copy_layer(layer, override_activation=None):
     # if no_activation is False, layer might or
     # might not have activation (depending on the config)
     layer_conf = layer.get_config()
-    if no_activation:
-        layer_conf['activation'] = 'linear'
+    if override_activation:
+        layer_conf['activation'] = override_activation
     # works for any serializable layer
     return type(layer).from_config(layer_conf)
