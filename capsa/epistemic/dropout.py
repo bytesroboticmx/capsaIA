@@ -9,38 +9,40 @@ class DropoutWrapper(keras.Model):
         self.metric_name = "MVEWrapper"
         self.is_standalone = is_standalone
 
-        dropout = tf.keras.layers.Dropout(p=0.25)
+        dropout = tf.keras.layers.Dropout(rate=0.25)
         inputs = base_model.layers[0].input
-        for i in range(len(base_model.layers) - 1):
+        for i in range(len(base_model.layers)):
             cur_layer = base_model.layers[i]
-            next_layer = base_model.layers[i + 1]
             if i == 0:
                 x = cur_layer(inputs)
+            elif i == len(base_model.layers) - 1:
+                x = base_model.layers[i](x)
             else:
+                next_layer = base_model.layers[i + 1]
                 x = cur_layer(x)
 
-            if (
-                type(cur_layer) == tf.keras.layers.Dense
-                and type(next_layer) != tf.keras.layers.Dropout
-            ):
-                x = dropout(x)
-            elif (
-                type(cur_layer) == tf.keras.layers.Conv1D
-                and type(next_layer) != tf.keras.layers.SpatialDropout1D
-            ):
-                x = tf.keras.layers.SpatialDropout1D(p=0.25)(x)
-            elif (
-                type(cur_layer) == tf.keras.layers.Conv2D
-                and type(next_layer) != tf.keras.layers.SpatialDropout2D
-            ):
-                x = tf.keras.layers.SpatialDropout2D(p=0.25)(x)
-            elif (
-                type(cur_layer) == tf.keras.layers.Conv3D
-                and type(next_layer) != tf.keras.layers.SpatialDropout3D
-            ):
-                x = tf.keras.layers.SpatialDropout1D(p=0.25)(x)
+                if (
+                    type(cur_layer) == tf.keras.layers.Dense
+                    and type(next_layer) != tf.keras.layers.Dropout
+                ):
+                    x = dropout(x)
+                elif (
+                    type(cur_layer) == tf.keras.layers.Conv1D
+                    and type(next_layer) != tf.keras.layers.SpatialDropout1D
+                ):
+                    x = tf.keras.layers.SpatialDropout1D(rate=0.25)(x)
+                elif (
+                    type(cur_layer) == tf.keras.layers.Conv2D
+                    and type(next_layer) != tf.keras.layers.SpatialDropout2D
+                ):
+                    x = tf.keras.layers.SpatialDropout2D(rate=0.25)(x)
+                elif (
+                    type(cur_layer) == tf.keras.layers.Conv3D
+                    and type(next_layer) != tf.keras.layers.SpatialDropout3D
+                ):
+                    x = tf.keras.layers.SpatialDropout1D(rate=0.25)(x)
 
-        self.new_model = tf.keras.Model(inputs, x)
+            self.new_model = tf.keras.Model(inputs, x)
 
     def loss_fn(self, x, y, features=None):
         y_hat = self.new_model(x, training=True)
@@ -48,9 +50,6 @@ class DropoutWrapper(keras.Model):
         loss = tf.reduce_mean(
             self.compiled_loss(y, y_hat, regularization_losses=self.losses),
         )
-
-        loss += tf.reduce_mean(self.neg_log_likelihood(y, mu, logvariance))
-
         return loss, y_hat
 
     def train_step(self, data):

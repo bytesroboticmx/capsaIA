@@ -10,4 +10,4 @@ pass
 from .aleatoric import MVEWrapper
 
 # Epistemic
-pass
+from .epistemic import DropoutWrapper
