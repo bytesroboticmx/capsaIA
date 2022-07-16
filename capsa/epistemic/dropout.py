@@ -3,6 +3,10 @@ from tensorflow import keras
 
 
 class DropoutWrapper(keras.Model):
+    """ Wrapper to calculate epistemic uncertainty by adding 
+    dropout layers after dense layers (or spatial dropout layers after conv layers).
+    """
+
     def __init__(self, base_model, is_standalone=True):
         super(DropoutWrapper, self).__init__()
 
@@ -13,6 +17,7 @@ class DropoutWrapper(keras.Model):
         inputs = base_model.layers[0].input
         for i in range(len(base_model.layers)):
             cur_layer = base_model.layers[i]
+            # We do not add dropouts after the input or final layers to preserve stability
             if i == 0:
                 x = cur_layer(inputs)
             elif i == len(base_model.layers) - 1:
@@ -20,7 +25,7 @@ class DropoutWrapper(keras.Model):
             else:
                 next_layer = base_model.layers[i + 1]
                 x = cur_layer(x)
-
+                # We do not repeat dropout layers if they're already added
                 if (
                     type(cur_layer) == tf.keras.layers.Dense
                     and type(next_layer) != tf.keras.layers.Dropout
@@ -66,6 +71,7 @@ class DropoutWrapper(keras.Model):
 
     @tf.function
     def wrapped_train_step(self, x, y, features):
+        # Note that dropout is not supported in wrapped mode
         pass
 
     def call(self, x, training=False, return_risk=True, T=20):
