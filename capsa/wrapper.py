@@ -31,8 +31,11 @@ class Wrapper(tf.keras.Model):
         """
         super(Wrapper, self).compile()
 
-        for i in range(len(self.metric)):
-            m = self.metric[i](self.base_model, is_standalone=False)
+        for i, m in enumerate(self.metric):
+            # if not 'initialized' e.g., MVEWrapper, RandomNetWrapper
+            if type(m) == type:
+                m = m(self.base_model, is_standalone=False)
+            # else already 'initialized' e.g., EnsambleWrapper(), VAEWrapper()
             m.compile(optimizer=optimizer[i], loss=loss[i])
             self.metric_compiled[m.metric_name] = m
 
