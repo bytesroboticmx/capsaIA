@@ -14,7 +14,6 @@ class EnsembleWrapper(keras.Model):
 
         self.metric_wrapper = metric_wrapper
         self.num_members = num_members
-        # todo-low: here and throughout code don't call it wrapper, bc it can wrap user's model directly (not a metric)
         self.metrics_compiled = {}
 
     def compile(self, optimizer, loss):
@@ -52,13 +51,12 @@ class EnsembleWrapper(keras.Model):
     def wrapped_train_step(self, x, y, features):
         accum_grads = tf.zeros_like(features)
         scalar = 1 / self.num_members
-
+        
         for wrapper in self.metrics_compiled.values():
             grad = wrapper.wrapped_train_step(x, y, features)[0]
             accum_grads += tf.scalar_mul(scalar, grad)
         return accum_grads
 
-    # todo-med: modify behavior based on return risk
     def call(self, x, training=False, return_risk=True, features=None):
         outs = []
         for wrapper in self.metrics_compiled.values():
