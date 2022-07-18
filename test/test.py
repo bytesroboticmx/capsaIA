@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras import layers
 
-from capsa import Wrapper, MVEWrapper
+from capsa import Wrapper, MVEWrapper, EnsembleWrapper
 from capsa.utils import get_user_model, plt_vspan, plot_results, plot_loss
 from data import get_data_v1, get_data_v2
 
@@ -85,6 +85,66 @@ def test_regression_predict():
 
     plot_aleatoric(x_val, y_val, y_pred, variance)
 
-test_regression(use_case=1)
-test_regression(use_case=2)
-test_regression_predict()
+
+def test_ensemble(use_case):
+
+    if use_case == 1:
+
+        their_model = get_user_model()
+        x, y, x_val, y_val = get_data_v1()
+
+        model = EnsembleWrapper(their_model, num_members=5)
+        model.compile(
+            optimizer=[tf.keras.optimizers.Adam(learning_rate=1e-2)],
+            loss=[tf.keras.losses.MeanSquaredError()],
+            # metric=[tf.keras.metrics.MeanSquaredError()],
+        )
+
+        history = model.fit(x, y, epochs=100)
+        plot_loss(history)
+
+        outs = model(x_val)
+
+        plt.plot(x_val, y_val, 'r-', label="ground truth")
+        plt.scatter(x, y, label="train data")
+        for i, out in enumerate(outs):
+            plt.plot(x_val, out, label=f"user_model_{i+1}")
+        plt.legend(loc='upper left')
+        plt.show()
+
+    elif use_case == 2:
+
+        their_model = get_user_model()
+        ds_train, ds_val, x_val, y_val = get_data_v2(batch_size=256)
+
+        model = EnsembleWrapper(their_model, MVEWrapper, num_members=5)
+
+        model.compile(
+            optimizer=[tf.keras.optimizers.Adam(learning_rate=2e-3)],
+            loss=[tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)],
+        )
+
+        history = model.fit(ds_train, epochs=30)
+        plot_loss(history)
+
+        outs = model(x_val)
+
+        fig, axs = plt.subplots(2)
+        axs[0].scatter(x_val, y_val, s=.5, label="gt")
+        plt_vspan()
+        for i, out in enumerate(outs):
+            y_pred, variance = out
+            axs[0].scatter(x_val, y_pred, s=.5, label=f"yhat_mve_{i+1}")
+            axs[1].scatter(x_val, variance, s=.5, label=f"aleatoric_{i+1}")
+
+        plt.ylim([0, 1])
+        plt_vspan()
+        plt.legend(loc='upper left')
+        plt.show()
+
+# test_regression(1)
+# test_regression(2)
+# test_regression_predict()
+
+test_ensemble(1)
+test_ensemble(2)
