@@ -95,7 +95,6 @@ def test_ensemble(use_case):
         model.compile(
             optimizer=[keras.optimizers.Adam(learning_rate=1e-2)],
             loss=[keras.losses.MeanSquaredError()],
-            # NOTE: added support for keras metrics
             # metrics=[[
             #     # keras.metrics.MeanSquaredError(name='mse'),
             #     keras.metrics.CosineSimilarity(name='cos'),
@@ -125,7 +124,6 @@ def test_ensemble(use_case):
         model.compile(
             optimizer=[keras.optimizers.Adam(learning_rate=2e-3)],
             loss=[keras.losses.MeanSquaredError(reduction=keras.losses.Reduction.NONE)],
-            # NOTE: added support for keras metrics
             # metrics=[[
             #     # keras.metrics.MeanSquaredError(name='mse'),
             #     keras.metrics.CosineSimilarity(name='cos'),
@@ -173,7 +171,6 @@ def test_ensemble(use_case):
                 # [keras.losses.MeanSquaredError(reduction=keras.losses.Reduction.NONE)],
                 [keras.losses.MeanSquaredError(reduction=keras.losses.Reduction.NONE)],
             ],
-            # NOTE: added support for keras metrics
             # metrics=[
             #     # [keras.metrics.MeanSquaredError(name='mse')],
             #     [keras.metrics.CosineSimilarity(name='cos')],
