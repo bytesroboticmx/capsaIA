@@ -35,11 +35,10 @@ class EnsembleWrapper(keras.Model):
 
             if isinstance(self.base_model, keras.Sequential):
                 m = keras.Sequential.from_config(base_model_config)
-            elif isinstance(self.base_model, keras.engine.functional.Functional):
-                raise Exception('Functional models are not supported. \
-                    Please provide either a sequential or a subclassed model.')
             elif isinstance(self.base_model, keras.Model):
                 m = keras.Model.from_config(base_model_config)
+            else:
+                raise Exception('Please provide a Sequential, Functional or subclassed model.')
 
             m = m if self.metric_wrapper is None else self.metric_wrapper(m, self.is_standalone)
             m_name = f'usermodel_{i}' if self.metric_wrapper is None else f'{m.metric_name}_{i}'

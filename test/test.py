@@ -238,18 +238,24 @@ def test_exceptions(use_case):
                 loss=[keras.losses.MeanSquaredError()],
             )
             history = model.fit(x, y, epochs=100)
+
         except AssertionError:
             print(f'test_exceptions_{use_case} worked!')
 
-    # a functional model
     elif use_case == 2:
 
         try:
-            input = keras.Input(shape=(28, 28, 1), name="img")
-            x = keras.layers.Dense(16, activation="relu")(input)
-            x = keras.layers.Dense(16, activation="relu")(x)
-            output = keras.layers.Dense(16, activation="relu")(x)
-            their_model = keras.Model(input, output)
+            class SquareNums():
+                def __init__(self):
+                    self.config = {1}
+
+                def get_config(self):
+                    return self.config
+
+                def call(self, x):
+                    return  x**2
+
+            their_model = SquareNums()
 
             model = EnsembleWrapper(their_model, num_members=5)
             model.compile(
@@ -257,9 +263,9 @@ def test_exceptions(use_case):
                 loss=[keras.losses.MeanSquaredError()],
             )
             history = model.fit(x, y, epochs=100)
+
         except Exception:
             print(f'test_exceptions_{use_case} worked!')
-
 
 test_regression(1)
 test_regression(2)
