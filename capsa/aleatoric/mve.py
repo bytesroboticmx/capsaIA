@@ -1,6 +1,5 @@
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers
 
 from ..utils import MLP, _get_out_dim, copy_layer
 
@@ -14,7 +13,7 @@ class MVEWrapper(keras.Model):
         self.is_standalone = is_standalone
 
         if is_standalone:
-            self.feature_extractor = tf.keras.Model(
+            self.feature_extractor = keras.Model(
                 inputs=base_model.inputs,
                 outputs=base_model.layers[-2].output,
             )

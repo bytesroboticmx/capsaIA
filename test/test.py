@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import tensorflow as tf
-import keras
+from tensorflow import keras
 
 from capsa import Wrapper, MVEWrapper, EnsembleWrapper
 from capsa.utils import get_user_model, plt_vspan, plot_results, plot_loss, get_preds_names
@@ -26,8 +25,8 @@ def test_regression(use_case=None):
     if use_case == 1:
         model = MVEWrapper(their_model)
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
-            loss=tf.keras.losses.MeanSquaredError(),
+            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
+            loss=keras.losses.MeanSquaredError(),
         )
         history = model.fit(ds_train, epochs=30)
         plot_loss(history)
@@ -40,9 +39,9 @@ def test_regression(use_case=None):
 
         model.compile(
             # user needs to specify optim and loss for each metric
-            optimizer=[tf.keras.optimizers.Adam(learning_rate=2e-3)],
+            optimizer=[keras.optimizers.Adam(learning_rate=2e-3)],
             # note reduction needs to be NONE, model reduces to mean under the hood
-            loss=[tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)],
+            loss=[keras.losses.MeanSquaredError(reduction=keras.losses.Reduction.NONE)],
         )
 
         history = model.fit(ds_train, epochs=30)
@@ -63,9 +62,9 @@ def test_regression_predict():
 
     model.compile(
         # user needs to specify optim and loss for each metric
-        optimizer=[tf.keras.optimizers.Adam(learning_rate=2e-3)],
+        optimizer=[keras.optimizers.Adam(learning_rate=2e-3)],
         # note reduction needs to be NONE, model reduces to mean under the hood
-        loss=[tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)],
+        loss=[keras.losses.MeanSquaredError(reduction=keras.losses.Reduction.NONE)],
     )
 
     history = model.fit(ds_train, epochs=30)
@@ -94,12 +93,12 @@ def test_ensemble(use_case):
 
         model = EnsembleWrapper(their_model, num_members=5)
         model.compile(
-            optimizer=[tf.keras.optimizers.Adam(learning_rate=1e-2)],
-            loss=[tf.keras.losses.MeanSquaredError()],
+            optimizer=[keras.optimizers.Adam(learning_rate=1e-2)],
+            loss=[keras.losses.MeanSquaredError()],
             # NOTE: added support for keras metrics
             # metrics=[[
-            #     # tf.keras.metrics.MeanSquaredError(name='mse'),
-            #     tf.keras.metrics.CosineSimilarity(name='cos'),
+            #     # keras.metrics.MeanSquaredError(name='mse'),
+            #     keras.metrics.CosineSimilarity(name='cos'),
             # ]],
         )
 
@@ -124,12 +123,12 @@ def test_ensemble(use_case):
         model = EnsembleWrapper(their_model, MVEWrapper, num_members=5)
 
         model.compile(
-            optimizer=[tf.keras.optimizers.Adam(learning_rate=2e-3)],
-            loss=[tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)],
+            optimizer=[keras.optimizers.Adam(learning_rate=2e-3)],
+            loss=[keras.losses.MeanSquaredError(reduction=keras.losses.Reduction.NONE)],
             # NOTE: added support for keras metrics
             # metrics=[[
-            #     # tf.keras.metrics.MeanSquaredError(name='mse'),
-            #     tf.keras.metrics.CosineSimilarity(name='cos'),
+            #     # keras.metrics.MeanSquaredError(name='mse'),
+            #     keras.metrics.CosineSimilarity(name='cos'),
             # ]],
         )
 
@@ -167,17 +166,17 @@ def test_ensemble(use_case):
 
         model.compile(
             optimizer=[
-                # [tf.keras.optimizers.Adam(learning_rate=2e-3)],
-                [tf.keras.optimizers.Adam(learning_rate=2e-3)],
+                # [keras.optimizers.Adam(learning_rate=2e-3)],
+                [keras.optimizers.Adam(learning_rate=2e-3)],
             ],
             loss=[
-                # [tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)],
-                [tf.keras.losses.MeanSquaredError(reduction=tf.keras.losses.Reduction.NONE)],
+                # [keras.losses.MeanSquaredError(reduction=keras.losses.Reduction.NONE)],
+                [keras.losses.MeanSquaredError(reduction=keras.losses.Reduction.NONE)],
             ],
             # NOTE: added support for keras metrics
             # metrics=[
-            #     # [tf.keras.metrics.MeanSquaredError(name='mse')],
-            #     [tf.keras.metrics.CosineSimilarity(name='cos')],
+            #     # [keras.metrics.MeanSquaredError(name='mse')],
+            #     [keras.metrics.CosineSimilarity(name='cos')],
             # ],
         )
 
@@ -238,8 +237,8 @@ def test_exceptions(use_case):
 
             model = EnsembleWrapper(their_model, num_members=5)
             model.compile(
-                optimizer=[tf.keras.optimizers.Adam(learning_rate=1e-2)],
-                loss=[tf.keras.losses.MeanSquaredError()],
+                optimizer=[keras.optimizers.Adam(learning_rate=1e-2)],
+                loss=[keras.losses.MeanSquaredError()],
             )
             history = model.fit(x, y, epochs=100)
         except AssertionError:
@@ -257,8 +256,8 @@ def test_exceptions(use_case):
 
             model = EnsembleWrapper(their_model, num_members=5)
             model.compile(
-                optimizer=[tf.keras.optimizers.Adam(learning_rate=1e-2)],
-                loss=[tf.keras.losses.MeanSquaredError()],
+                optimizer=[keras.optimizers.Adam(learning_rate=1e-2)],
+                loss=[keras.losses.MeanSquaredError()],
             )
             history = model.fit(x, y, epochs=100)
         except Exception:
