@@ -47,34 +47,34 @@ class EnsembleWrapper(keras.Model):
             self.metrics_compiled[m_name] = m
 
     def train_step(self, data):
-        all_keras_metrics = {}
+        keras_metrics = {}
 
         for name, wrapper in self.metrics_compiled.items():
 
-            # wrapping user model
+            # ensembling user model
             if self.metric_wrapper is None:
                 _ = wrapper.train_step(data)
                 for m in wrapper.metrics:
-                    all_keras_metrics[f'{name}_{m.name}'] = m.result()
+                    keras_metrics[f'{name}_{m.name}'] = m.result()
 
-            # wrapping one of our metrics
+            # ensembling one of our metrics
             else:
                 keras_metric = wrapper.train_step(data, name)
-                all_keras_metrics.update(keras_metric)
+                keras_metrics.update(keras_metric)
 
-        return all_keras_metrics
+        return keras_metrics
 
     def wrapped_train_step(self, x, y, features, prefix):
-        all_keras_metrics = {}
+        keras_metrics = {}
 
         accum_grads = tf.zeros_like(features)
         scalar = 1 / self.num_members
 
         for name, wrapper in self.metrics_compiled.items():
-            keras_metrics, grad = wrapper.wrapped_train_step(x, y, features, f'{prefix}_{name}')
-            all_keras_metrics.update(keras_metrics)
+            keras_metric, grad = wrapper.wrapped_train_step(x, y, features, f'{prefix}_{name}')
+            keras_metrics.update(keras_metric)
             accum_grads += tf.scalar_mul(scalar, grad[0])
-        return all_keras_metrics, [accum_grads]
+        return keras_metrics, [accum_grads]
 
     def call(self, x, training=False, return_risk=True, features=None):
         outs = []

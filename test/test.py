@@ -261,9 +261,9 @@ def test_exceptions(use_case):
             print(f'test_exceptions_{use_case} worked!')
 
 
-# test_regression(1)
-# test_regression(2)
-# test_regression_predict()
+test_regression(1)
+test_regression(2)
+test_regression_predict()
 
 test_ensemble(1)
 test_ensemble(2)

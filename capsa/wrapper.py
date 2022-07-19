@@ -41,7 +41,7 @@ class Wrapper(keras.Model):
 
     @tf.function
     def train_step(self, data):
-        all_keras_metrics = {}
+        keras_metrics = {}
         x, y = data
 
         features = self.feature_extractor(x)
@@ -50,13 +50,13 @@ class Wrapper(keras.Model):
 
         for name, wrapper in self.metric_compiled.items():
             keras_metric, grad = wrapper.wrapped_train_step(x, y, features, name)
-            all_keras_metrics.update(keras_metric)
+            keras_metrics.update(keras_metric)
             accum_grads += tf.scalar_mul(scalar, grad[0])
 
         trainable_vars = self.feature_extractor.trainable_variables
         gradients = tf.gradients(features, trainable_vars, accum_grads)
         self.optim.apply_gradients(zip(gradients, trainable_vars))
-        return all_keras_metrics
+        return keras_metrics
 
     def call(self, x, training=False, return_risk=True):
         out = []
