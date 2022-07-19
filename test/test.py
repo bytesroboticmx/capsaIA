@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow.keras import layers
+import keras
 
 from capsa import Wrapper, MVEWrapper, EnsembleWrapper
 from capsa.utils import get_user_model, plt_vspan, plot_results, plot_loss, get_preds_names
@@ -206,6 +206,65 @@ def test_ensemble(use_case):
         plt.legend(loc='upper left')
         plt.show()
 
+
+def test_exceptions(use_case):
+
+    x, y, x_val, y_val = get_data_v1()
+
+    # get_config not implemented
+    if use_case == 1:
+
+        class CustomModel(keras.Model):
+            def __init__(self, hidden_units):
+                super(CustomModel, self).__init__()
+                self.hidden_units = hidden_units
+                self.dense_layers = [keras.layers.Dense(u) for u in hidden_units]
+
+            def call(self, inputs):
+                x = inputs
+                for layer in self.dense_layers:
+                    x = layer(x)
+                return x
+
+            # def get_config(self):
+            #     return {"hidden_units": self.hidden_units}
+
+            # @classmethod
+            # def from_config(cls, config):
+            #     return cls(**config)
+
+        try:
+            their_model = CustomModel([16, 32, 16])
+
+            model = EnsembleWrapper(their_model, num_members=5)
+            model.compile(
+                optimizer=[tf.keras.optimizers.Adam(learning_rate=1e-2)],
+                loss=[tf.keras.losses.MeanSquaredError()],
+            )
+            history = model.fit(x, y, epochs=100)
+        except AssertionError:
+            print(f'test_exceptions_{use_case} worked!')
+
+    # a functional model
+    elif use_case == 2:
+
+        try:
+            input = keras.Input(shape=(28, 28, 1), name="img")
+            x = keras.layers.Dense(16, activation="relu")(input)
+            x = keras.layers.Dense(16, activation="relu")(x)
+            output = keras.layers.Dense(16, activation="relu")(x)
+            their_model = keras.Model(input, output)
+
+            model = EnsembleWrapper(their_model, num_members=5)
+            model.compile(
+                optimizer=[tf.keras.optimizers.Adam(learning_rate=1e-2)],
+                loss=[tf.keras.losses.MeanSquaredError()],
+            )
+            history = model.fit(x, y, epochs=100)
+        except Exception:
+            print(f'test_exceptions_{use_case} worked!')
+
+
 # test_regression(1)
 # test_regression(2)
 # test_regression_predict()
@@ -213,3 +272,6 @@ def test_ensemble(use_case):
 test_ensemble(1)
 test_ensemble(2)
 test_ensemble(3)
+
+test_exceptions(1)
+test_exceptions(2)

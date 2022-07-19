@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow import keras
+import keras
 from keras import optimizers as optim
 
 
@@ -24,17 +24,23 @@ class EnsembleWrapper(keras.Model):
         if len(optimizer) or len(loss) < self.num_members:
             optim_conf = optim.serialize(optimizer[0])
             optimizer = [optim.deserialize(optim_conf) for _ in range(self.num_members)]
-            # losses and *most* metrics stateless, so don't need to serialize as above
+            # losses and *most* keras metrics are stateless, no need to serialize as above
             loss = [loss[0] for _ in range(self.num_members)]
             metrics = [metrics[0] for _ in range(self.num_members)]
 
-        # assumes user model implements get_config() 
         base_model_config = self.base_model.get_config()
+        assert base_model_config != {}, 'Please implement get_config().'
 
         for i in range(self.num_members):
-            # todo-low: assumes user's model is sequintial
-            m = keras.Sequential.from_config(base_model_config) # for a Sequential user model
-            # m = keras.Model.from_config(base_model_config) # for a Functional user model
+
+            if isinstance(self.base_model, keras.Sequential):
+                m = keras.Sequential.from_config(base_model_config)
+            elif isinstance(self.base_model, keras.engine.functional.Functional):
+                raise Exception('Functional models are not supported. \
+                    Please provide either a sequential or a subclassed model.')
+            elif isinstance(self.base_model, keras.Model):
+                m = keras.Model.from_config(base_model_config)
+
             m = m if self.metric_wrapper is None else self.metric_wrapper(m, self.is_standalone)
             m_name = f'usermodel_{i}' if self.metric_wrapper is None else f'{m.metric_name}_{i}'
             m.compile(optimizer[i], loss[i], metrics[i])
