@@ -7,13 +7,12 @@ class DropoutWrapper(keras.Model):
     dropout layers after dense layers (or spatial dropout layers after conv layers).
     """
 
-    def __init__(self, base_model, is_standalone=True):
+    def __init__(self, base_model, p=0.1, is_standalone=True):
         super(DropoutWrapper, self).__init__()
 
-        self.metric_name = "MVEWrapper"
+        self.metric_name = "DropoutWrapper"
         self.is_standalone = is_standalone
 
-        dropout = tf.keras.layers.Dropout(rate=0.25)
         inputs = base_model.layers[0].input
         for i in range(len(base_model.layers)):
             cur_layer = base_model.layers[i]
@@ -30,12 +29,12 @@ class DropoutWrapper(keras.Model):
                     type(cur_layer) == tf.keras.layers.Dense
                     and type(next_layer) != tf.keras.layers.Dropout
                 ):
-                    x = dropout(x)
+                    x = tf.keras.layers.Dropout(rate=p)(x)
                 elif (
                     type(cur_layer) == tf.keras.layers.Conv1D
                     and type(next_layer) != tf.keras.layers.SpatialDropout1D
                 ):
-                    x = tf.keras.layers.SpatialDropout1D(rate=0.25)(x)
+                    x = tf.keras.layers.SpatialDropout1D(rate=p)(x)
                 elif (
                     type(cur_layer) == tf.keras.layers.Conv2D
                     and type(next_layer) != tf.keras.layers.SpatialDropout2D
@@ -75,16 +74,16 @@ class DropoutWrapper(keras.Model):
         pass
 
     def call(self, x, training=False, return_risk=True, T=20):
-        y_hat = self.new_model(
-            x, training=True
-        )  # we need training=True so that dropout is applied
+        y_hat = self.new_model(x, training=training)
 
         if return_risk:
             all_forward_passes = []
             for _ in range(T - 1):
-                all_forward_passes.append(self.new_model(x, training=True))
-            var = tf.math.reduce_variance(all_forward_passes, axis=0)
+                all_forward_passes.append(
+                    self.new_model(x, training=True)
+                )  # we need training=True so that dropout is applied
+            std = tf.math.reduce_std(all_forward_passes, axis=0)
             y_hat = tf.reduce_mean(all_forward_passes, axis=0)
-            return y_hat, var
+            return y_hat, std
         else:
-            return y_hat  # TODO: do we want to run T forward passes even when we aren't returning uncertainty for stability?
+            return y_hat
