@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
-from capsa import Wrapper, MVEWrapper, HistogramWrapper
+from capsa import Wrapper, MVEWrapper, HistogramWrapper, HistogramCallback
 from capsa.utils import get_user_model, plt_vspan, plot_results, plot_loss
 from data import get_data_v1, get_data_v2
 
@@ -40,7 +40,7 @@ def test_regression(use_case=None):
 
     # user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
     elif use_case == 2:
-        model = Wrapper(their_model, metrics=[MVEWrapper])
+        model = Wrapper(their_model, metrics=[MVEWrapper],)
 
         model.compile(
             # user needs to specify optim and loss for each metric
@@ -106,7 +106,7 @@ def test_bias(use_case=None):
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
             loss=tf.keras.losses.MeanSquaredError(),
         )
-        history = model.fit(ds_train, epochs=30)
+        history = model.fit(ds_train, epochs=30, callbacks=[HistogramCallback()])
 
         plt.plot(history.history["loss"])
         plt.show()
@@ -119,7 +119,7 @@ def test_bias(use_case=None):
         # make 'controller' wrapper behave like a tf model, such that user can interact with it
         # the same as they directly a any of the MetricWrappers (see 3 lines above)
         # so in controller Wrapper implement compile() and fit() methods
-        model = Wrapper(their_model, metrics=[HistogramWrapper])
+        model = Wrapper(their_model, metrics=[HistogramWrapper],)
 
         model.compile(
             # user needs to specify optim and loss for each metric
@@ -130,9 +130,10 @@ def test_bias(use_case=None):
                     reduction=tf.keras.losses.Reduction.NONE
                 )
             ],
+            run_eagerly=True,
         )
 
-        model.fit(ds_train, epochs=30)
+        model.fit(ds_train, epochs=40, callbacks=[HistogramCallback()])
 
         metrics_out = model(x_val)
         y_pred, bias = metrics_out[0]

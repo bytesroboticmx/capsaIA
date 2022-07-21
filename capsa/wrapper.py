@@ -23,12 +23,12 @@ class Wrapper(tf.keras.Model):
         )
         self.optim = tf.keras.optimizers.Adam(learning_rate=2e-3)
 
-    def compile(self, optimizer, loss):
-        super(Wrapper, self).compile()
+    def compile(self, optimizer, loss, **kwargs):
+        super(Wrapper, self).compile(optimizer, loss, **kwargs)
 
         for i in range(len(self.metric)):
             m = self.metric[i](self.base_model, is_standalone=False)
-            m.compile(optimizer=optimizer[i], loss=loss[i])
+            m.compile(optimizer=optimizer[i], loss=loss[i], **kwargs)
             self.metric_compiled[m.metric_name] = m
 
     @tf.function
