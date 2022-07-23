@@ -9,6 +9,7 @@ class Wrapper(keras.Model):
         base_model (model): a model
 
     """
+
     def __init__(self, base_model, metrics=[]):
         super(Wrapper, self).__init__()
 
@@ -16,19 +17,19 @@ class Wrapper(keras.Model):
         self.metric_compiled = {}
 
         self.base_model = base_model
-        self.feature_extractor = keras.Model(base_model.inputs, base_model.layers[-2].output)
+        self.feature_extractor = keras.Model(
+            base_model.inputs, base_model.layers[-2].output
+        )
         self.optim = keras.optimizers.Adam(learning_rate=2e-3)
 
-    def compile(self, optimizer, loss, metrics=None):
+    def compile(self, optimizer, loss, *args, metrics=None, **kwargs):
         """ Compile the wrapper
 
         Args:
             optimizer (optimizer): the optimizer
 
-            loss (fn): the loss function
-
         """
-        super(Wrapper, self).compile()
+        super(Wrapper, self).compile(optimizer, loss, *args, metrics=metrics, **kwargs)
 
         for i, m in enumerate(self.metric):
             # if not 'initialized' e.g., MVEWrapper, RandomNetWrapper
