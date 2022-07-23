@@ -6,6 +6,7 @@ from .utils import (
     plot_results,
     plot_loss,
     copy_layer,
+    get_preds_names,
     Sampling,
     reverse_model,
 )
