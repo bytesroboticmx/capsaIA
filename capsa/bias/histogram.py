@@ -45,7 +45,7 @@ class HistogramWrapper(keras.Model):
 
         self.metric_wrapper = metric_wrapper
 
-    def compile(self, optimizer, loss, **kwargs):
+    def compile(self, optimizer, loss, *args, **kwargs):
         # replace the given feature extractor with the metric wrapper's extractor if provided
         if self.metric_wrapper is not None:
             self.metric_wrapper = self.metric_wrapper(
@@ -53,7 +53,7 @@ class HistogramWrapper(keras.Model):
             )
             self.output_layer = self.metric_wrapper.output_layer
             self.feature_extractor = self.metric_wrapper.feature_extractor
-            self.metric_wrapper.compile(optimizer=optimizer, loss=loss, **kwargs)
+            self.metric_wrapper.compile(optimizer=optimizer, loss=loss, *args, **kwargs)
 
         super(HistogramWrapper, self).compile(optimizer=optimizer, loss=loss, **kwargs)
 
@@ -89,14 +89,20 @@ class HistogramWrapper(keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
     @tf.function
-    def wrapped_train_step(self, x, y, extractor_out):
+    def wrapped_train_step(self, x, y, features, prefix):
+
         with tf.GradientTape() as t:
-            loss, predictor_y = self.loss_fn(x, y, extractor_out)
+            loss, y_hat = self.loss_fn(x, y, features)
+        self.compiled_metrics.update_state(y, y_hat)
+
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 
-        return tf.gradients(loss, extractor_out)
+        return (
+            {f"{prefix}_{m.name}": m.result() for m in self.metrics},
+            tf.gradients(loss, features),
+        )
 
     def call(self, x, training=False, return_risk=True, features=None):
         if self.is_standalone:

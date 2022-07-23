@@ -38,6 +38,14 @@ def plot_loss(history):
     plt.show()
 
 
+def get_preds_names(history):
+    l = list(history.history.keys())
+    # cut of keras metric names -- e.g., 'MVEW_0_loss' -> 'MVEW_0'
+    l_split = [i.rsplit("_", 1)[0] for i in l]
+    # remove duplicates (if specified multiple keras metrics)
+    return list(dict.fromkeys(l_split))
+
+
 def plt_vspan():
     plt.axvspan(-6, -4, ec="black", color="grey", linestyle="--", alpha=0.3, zorder=3)
     plt.axvspan(4, 6, ec="black", color="grey", linestyle="--", alpha=0.3, zorder=3)

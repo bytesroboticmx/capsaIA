@@ -1,6 +1,5 @@
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers
 
 from ..utils import MLP, _get_out_dim, copy_layer
 
@@ -10,13 +9,14 @@ class MVEWrapper(keras.Model):
     def __init__(self, base_model, is_standalone=True):
         super(MVEWrapper, self).__init__()
 
-        self.metric_name = 'MVEWrapper'
+        self.metric_name = 'mve'
         self.is_standalone = is_standalone
 
         if is_standalone:
-            self.feature_extractor = tf.keras.Model(
+            self.feature_extractor = keras.Model(
                 inputs=base_model.inputs,
-                outputs=base_model.layers[-2].output)
+                outputs=base_model.layers[-2].output,
+            )
 
         output_layer = base_model.layers[-1]
         self.out_y = copy_layer(output_layer)
@@ -46,28 +46,36 @@ class MVEWrapper(keras.Model):
 
         return loss, y_hat
 
-    def train_step(self, data):
+    def train_step(self, data, prefix=None):
         x, y = data
 
         with tf.GradientTape() as t:
             loss, y_hat = self.loss_fn(x, y)
+        self.compiled_metrics.update_state(y, y_hat)
 
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-        self.compiled_metrics.update_state(y, y_hat)
-        return {m.name: m.result() for m in self.metrics}
+
+        if prefix is None:
+            prefix = self.metric_name
+        return {f'{prefix}_{m.name}': m.result() for m in self.metrics}
 
     @tf.function
-    def wrapped_train_step(self, x, y, features):
+    def wrapped_train_step(self, x, y, features, prefix):
+
         with tf.GradientTape() as t:
             loss, y_hat = self.loss_fn(x, y, features)
+        self.compiled_metrics.update_state(y, y_hat)
+
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-        return tf.gradients(loss, features)
+
+        return {f'{prefix}_{m.name}': m.result() for m in self.metrics}, tf.gradients(loss, features)
 
     def call(self, x, training=False, return_risk=True, features=None):
+
         if self.is_standalone:
             features = self.feature_extractor(x, training)
         y_hat = self.out_y(features)
