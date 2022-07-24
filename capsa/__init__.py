@@ -10,4 +10,4 @@ from .bias import HistogramWrapper, HistogramCallback
 from .aleatoric import MVEWrapper
 
 # Epistemic
-from .epistemic import DropoutWrapper, EnsembleWrapper
+from .epistemic import DropoutWrapper, EnsembleWrapper, VAEWrapper

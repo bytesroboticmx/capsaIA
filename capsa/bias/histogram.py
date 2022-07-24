@@ -109,6 +109,7 @@ class HistogramWrapper(keras.Model):
             features = self.feature_extractor(x, training=False)
 
         hist_input = features
+
         if self.metric_wrapper is not None:
             # get the correct inputs to histogram if we have an additional metric
             hist_input = self.metric_wrapper.input_to_histogram(
