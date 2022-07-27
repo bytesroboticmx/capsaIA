@@ -43,7 +43,6 @@ def test_bias(use_case=None):
                     reduction=tf.keras.losses.Reduction.NONE
                 )
             ],
-            run_eagerly=True,
         )
 
         model.fit(ds_train, epochs=40, callbacks=[HistogramCallback()])

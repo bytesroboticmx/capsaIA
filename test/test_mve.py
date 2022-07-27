@@ -154,6 +154,6 @@ def test_bias(use_case=None):
     plt.show()
 
 
-test_regression(1)
+#test_regression(1)
 test_regression(2)
-test_regression_predict()
+#test_regression_predict()

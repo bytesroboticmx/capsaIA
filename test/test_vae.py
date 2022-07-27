@@ -54,11 +54,11 @@ def test_vae(use_case=None):
     axs[0].scatter(x_val, y_val, s=0.5, label="gt")
     axs[0].scatter(x_val, y_pred, s=0.5, label="yhat")
     plt_vspan()
-    axs[1].scatter(x_val, recon_loss, s=0.5, label="bias")
+    axs[1].scatter(x_val, recon_loss, s=0.5, label="recon loss")
     plt_vspan()
     plt.legend()
     plt.show()
 
 
-test_vae(use_case=1)
+# test_vae(use_case=1)
 test_vae(use_case=2)

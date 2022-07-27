@@ -37,7 +37,7 @@ class Wrapper(keras.Model):
                 m = m(self.base_model, is_standalone=False)
             # else already 'initialized' e.g., EnsambleWrapper(), VAEWrapper()
             metric = metrics[i] if metrics is not None else [metrics]
-            m.compile(optimizer[i], loss[i], metric)
+            m.compile(optimizer=optimizer[i], loss=loss[i], metrics=metric)
             self.metric_compiled[m.metric_name] = m
 
     @tf.function
@@ -51,6 +51,7 @@ class Wrapper(keras.Model):
 
         for name, wrapper in self.metric_compiled.items():
             keras_metric, grad = wrapper.wrapped_train_step(x, y, features, name)
+            print(grad)
             keras_metrics.update(keras_metric)
             accum_grads += tf.scalar_mul(scalar, grad[0])
 

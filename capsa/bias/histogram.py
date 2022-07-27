@@ -62,12 +62,6 @@ class HistogramWrapper(keras.Model):
             extractor_out = self.feature_extractor(x, training=True)
 
         hist_input = extractor_out
-        if self.metric_wrapper is not None:
-            hist_input = self.metric_wrapper.input_to_histogram(
-                extractor_out, training=True
-            )
-            loss = self.metric_wrapper.loss_fn(x, y, extractor_out)
-
         self.histogram_layer(hist_input)
         out = self.output_layer(extractor_out)
         loss = tf.reduce_mean(
@@ -78,10 +72,14 @@ class HistogramWrapper(keras.Model):
 
     def train_step(self, data):
         x, y = data
-
         with tf.GradientTape() as t:
-            loss, predictor_y = self.loss_fn(x, y)
-
+            if self.metric_wrapper is not None:
+                _ = self.metric_wrapper.train_step(data)
+                loss, predictor_y = self.loss_fn(
+                    x, y, extractor_out=self.metric_wrapper.input_to_histogram(x)
+                )
+            else:
+                loss, predictor_y = self.loss_fn(x, y)
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
@@ -105,19 +103,15 @@ class HistogramWrapper(keras.Model):
         )
 
     def call(self, x, training=False, return_risk=True, features=None):
-        if self.is_standalone:
+        if self.is_standalone and self.metric_wrapper is None:
             features = self.feature_extractor(x, training=False)
-
-        hist_input = features
 
         if self.metric_wrapper is not None:
             # get the correct inputs to histogram if we have an additional metric
-            hist_input = self.metric_wrapper.input_to_histogram(
-                features, training=False
-            )
+            features = self.metric_wrapper.input_to_histogram(x, training=False)
 
         predictor_y = self.output_layer(features)
-        bias = self.histogram_layer(hist_input, training=False)
+        bias = self.histogram_layer(features, training=False)
 
         return predictor_y, bias
 
