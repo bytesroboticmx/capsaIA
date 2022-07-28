@@ -108,9 +108,10 @@ class VAEWrapper(keras.Model):
         else:
             return out
 
-    def input_to_histogram(self, x, training=None):
+    def input_to_histogram(self, x, training=None, extractor_out=None):
         # Needed to interface with the Histogram metric.
-        extractor_out = self.feature_extractor(x, training=training)
+        if extractor_out is None:
+            extractor_out = self.feature_extractor(x, training=training)
         mu = self.mean_layer(extractor_out, training=training)
 
         return mu

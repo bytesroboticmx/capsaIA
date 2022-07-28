@@ -39,9 +39,9 @@ class HistogramWrapper(keras.Model):
             self.feature_extractor = tf.keras.Model(
                 base_model.inputs, base_model.layers[-2].output
             )
+            last_layer = base_model.layers[-1]
+            self.output_layer = copy_layer(last_layer)  # duplicate last layer
 
-        last_layer = base_model.layers[-1]
-        self.output_layer = copy_layer(last_layer)  # duplicate last layer
         self.histogram_layer = HistogramLayer(num_bins=num_bins)
 
         # currently only supports VAEs!
@@ -66,7 +66,6 @@ class HistogramWrapper(keras.Model):
     def loss_fn(self, x, y, extractor_out=None):
         if extractor_out is None:
             extractor_out = self.feature_extractor(x, training=True)
-
         hist_input = extractor_out
         self.histogram_layer(hist_input)
         out = self.output_layer(extractor_out)
@@ -96,7 +95,14 @@ class HistogramWrapper(keras.Model):
     def wrapped_train_step(self, x, y, features, prefix):
 
         with tf.GradientTape() as t:
-            loss, y_hat = self.loss_fn(x, y, features)
+            if self.metric_wrapper is not None:
+                loss, y_hat = self.loss_fn(
+                    x,
+                    y,
+                    self.metric_wrapper.input_to_histogram(x, extractor_out=features),
+                )
+            else:
+                loss, y_hat = self.loss_fn(x, y, features)
         self.compiled_metrics.update_state(y, y_hat)
 
         trainable_vars = self.trainable_variables
@@ -114,6 +120,7 @@ class HistogramWrapper(keras.Model):
 
         if self.metric_wrapper is not None:
             # get the correct inputs to histogram if we have an additional metric
+            print("getting VAE features!")
             features = self.metric_wrapper.input_to_histogram(x, training=False)
 
         predictor_y = self.output_layer(features)

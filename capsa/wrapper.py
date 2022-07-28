@@ -30,7 +30,9 @@ class Wrapper(keras.Model):
 
         """
         super(Wrapper, self).compile(optimizer, loss, *args, metrics=metrics, **kwargs)
-
+        if type(optimizer) != list:
+            optimizer = [optimizer for _ in self.metric]
+            loss = [loss for _ in self.metric]
         for i, m in enumerate(self.metric):
             # if not 'initialized' e.g., MVEWrapper, RandomNetWrapper
             if type(m) == type:
@@ -51,7 +53,6 @@ class Wrapper(keras.Model):
 
         for name, wrapper in self.metric_compiled.items():
             keras_metric, grad = wrapper.wrapped_train_step(x, y, features, name)
-            print(grad)
             keras_metrics.update(keras_metric)
             accum_grads += tf.scalar_mul(scalar, grad[0])
 
@@ -61,9 +62,9 @@ class Wrapper(keras.Model):
         return keras_metrics
 
     def call(self, x, training=False, return_risk=True):
-        out = []
+        out = {}
         features = self.feature_extractor(x, training)
 
         for wrapper in self.metric_compiled.values():
-            out.append(wrapper(x, training, return_risk, features))
+            out[wrapper.name] = wrapper(x, training, return_risk, features)
         return out
