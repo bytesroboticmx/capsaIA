@@ -4,6 +4,7 @@ from tensorflow import keras
 from ..wrapper import Wrapper
 from ..utils import copy_layer
 import tensorflow_probability as tfp
+from ..epistemic import VAEWrapper
 
 
 class HistogramCallback(tf.keras.callbacks.Callback):
@@ -43,17 +44,22 @@ class HistogramWrapper(keras.Model):
         self.output_layer = copy_layer(last_layer)  # duplicate last layer
         self.histogram_layer = HistogramLayer(num_bins=num_bins)
 
+        # currently only supports VAEs!
         self.metric_wrapper = metric_wrapper
 
     def compile(self, optimizer, loss, *args, **kwargs):
         # replace the given feature extractor with the metric wrapper's extractor if provided
         if self.metric_wrapper is not None:
-            self.metric_wrapper = self.metric_wrapper(
-                base_model=self.base_model, is_standalone=self.is_standalone,
-            )
+            if type(self.metric_wrapper) == type:
+                # we have received an uninitialized wrapper
+                self.metric_wrapper = self.metric_wrapper(
+                    base_model=self.base_model, is_standalone=self.is_standalone,
+                )
+                self.metric_wrapper.compile(
+                    optimizer=optimizer, loss=loss, *args, **kwargs
+                )
             self.output_layer = self.metric_wrapper.output_layer
             self.feature_extractor = self.metric_wrapper.feature_extractor
-            self.metric_wrapper.compile(optimizer=optimizer, loss=loss, *args, **kwargs)
 
         super(HistogramWrapper, self).compile(optimizer=optimizer, loss=loss, **kwargs)
 

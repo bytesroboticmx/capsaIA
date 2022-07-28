@@ -60,5 +60,5 @@ def test_vae(use_case=None):
     plt.show()
 
 
-# test_vae(use_case=1)
+test_vae(use_case=1)
 test_vae(use_case=2)
