@@ -1,14 +1,15 @@
 import tensorflow as tf
 from tensorflow import keras
+from ..metric_wrapper import MetricWrapper
 
 
-class DropoutWrapper(keras.Model):
+class DropoutWrapper(MetricWrapper):
     """ Wrapper to calculate epistemic uncertainty by adding 
     dropout layers after dense layers (or spatial dropout layers after conv layers).
     """
 
     def __init__(self, base_model, p=0.1, is_standalone=True):
-        super(DropoutWrapper, self).__init__()
+        super(DropoutWrapper, self).__init__(base_model, is_standalone)
 
         self.metric_name = "DropoutWrapper"
         self.is_standalone = is_standalone

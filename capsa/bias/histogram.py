@@ -4,6 +4,7 @@ from tensorflow import keras
 from ..wrapper import Wrapper
 from ..utils import copy_layer
 import tensorflow_probability as tfp
+from ..metric_wrapper import MetricWrapper
 
 
 class HistogramCallback(tf.keras.callbacks.Callback):
@@ -17,7 +18,7 @@ class HistogramCallback(tf.keras.callbacks.Callback):
                         m.histogram_layer.update_state()
 
 
-class HistogramWrapper(keras.Model):
+class HistogramWrapper(MetricWrapper):
     """
         A wrapper that generates feature histograms for a given model.
 
@@ -29,11 +30,8 @@ class HistogramWrapper(keras.Model):
     """
 
     def __init__(self, base_model, is_standalone=True, num_bins=5, metric_wrapper=None):
-        super(HistogramWrapper, self).__init__()
-        self.base_model = base_model
+        super(HistogramWrapper, self).__init__(base_model, is_standalone=is_standalone)
         self.metric_name = "HistogramWrapper"
-        self.is_standalone = is_standalone
-
         if is_standalone:
             self.feature_extractor = tf.keras.Model(
                 base_model.inputs, base_model.layers[-2].output
@@ -75,34 +73,6 @@ class HistogramWrapper(keras.Model):
         )
 
         return loss, out
-
-    def train_step(self, data):
-        x, y = data
-
-        with tf.GradientTape() as t:
-            loss, predictor_y = self.loss_fn(x, y)
-
-        trainable_vars = self.trainable_variables
-        gradients = t.gradient(loss, trainable_vars)
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-        self.compiled_metrics.update_state(y, predictor_y)
-        return {m.name: m.result() for m in self.metrics}
-
-    @tf.function
-    def wrapped_train_step(self, x, y, features, prefix):
-
-        with tf.GradientTape() as t:
-            loss, y_hat = self.loss_fn(x, y, features)
-        self.compiled_metrics.update_state(y, y_hat)
-
-        trainable_vars = self.trainable_variables
-        gradients = t.gradient(loss, trainable_vars)
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-
-        return (
-            {f"{prefix}_{m.name}": m.result() for m in self.metrics},
-            tf.gradients(loss, features),
-        )
 
     def call(self, x, training=False, return_risk=True, features=None):
         if self.is_standalone:

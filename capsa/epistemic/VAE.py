@@ -3,11 +3,12 @@ import tensorflow as tf
 from tensorflow import keras
 
 from ..utils import Sampling, copy_layer, reverse_model, _get_out_dim
+from ..metric_wrapper import MetricWrapper
 
 
-class VAEWrapper(keras.Model):
+class VAEWrapper(MetricWrapper):
     def __init__(self, base_model, is_standalone=True, decoder=None):
-        super(VAEWrapper, self).__init__()
+        super(VAEWrapper, self).__init__(base_model, is_standalone)
 
         self.metric_name = "VAEWrapper"
         self.is_standalone = is_standalone
@@ -65,29 +66,6 @@ class VAEWrapper(keras.Model):
         log_std = self.log_std_layer(extractor_out)
         recon_loss = self.reconstruction_loss(mu=mu, log_std=log_std, x=x)
         return tf.reduce_mean(recon_loss + compiled_loss), predictor_y
-
-    def train_step(self, data):
-        x, y = data
-
-        with tf.GradientTape() as t:
-            loss, predictor_y = self.loss_fn(x, y)
-
-        trainable_vars = self.trainable_variables
-        gradients = t.gradient(loss, trainable_vars)
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-        self.compiled_metrics.update_state(y, predictor_y)
-        return {m.name: m.result() for m in self.metrics}
-
-    @tf.function
-    def wrapped_train_step(self, x, y, extractor_out):
-        with tf.GradientTape() as t:
-            loss, predictor_y = self.loss_fn(x, y, extractor_out)
-
-        trainable_vars = self.trainable_variables
-        gradients = t.gradient(loss, trainable_vars)
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-
-        return tf.gradients(loss, extractor_out)
 
     def call(self, x, training=False, return_risk=True, features=None):
         if self.is_standalone:

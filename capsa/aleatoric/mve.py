@@ -2,20 +2,19 @@ import tensorflow as tf
 from tensorflow import keras
 
 from ..utils import MLP, _get_out_dim, copy_layer
+from ..metric_wrapper import MetricWrapper
 
 
-class MVEWrapper(keras.Model):
-
+class MVEWrapper(MetricWrapper):
     def __init__(self, base_model, is_standalone=True):
-        super(MVEWrapper, self).__init__()
+        super(MVEWrapper, self).__init__(base_model, is_standalone)
 
-        self.metric_name = 'mve'
+        self.metric_name = "mve"
         self.is_standalone = is_standalone
 
         if is_standalone:
             self.feature_extractor = keras.Model(
-                inputs=base_model.inputs,
-                outputs=base_model.layers[-2].output,
+                inputs=base_model.inputs, outputs=base_model.layers[-2].output,
             )
 
         output_layer = base_model.layers[-1]
@@ -26,7 +25,7 @@ class MVEWrapper(keras.Model):
     @staticmethod
     def neg_log_likelihood(y, mu, logvariance):
         variance = tf.exp(logvariance)
-        return logvariance + (y-mu)**2 / variance
+        return logvariance + (y - mu) ** 2 / variance
 
     def loss_fn(self, x, y, features=None):
         if self.is_standalone:
@@ -40,39 +39,9 @@ class MVEWrapper(keras.Model):
             self.compiled_loss(y, y_hat, regularization_losses=self.losses),
         )
 
-        loss += tf.reduce_mean(
-            self.neg_log_likelihood(y, mu, logvariance)
-        )
+        loss += tf.reduce_mean(self.neg_log_likelihood(y, mu, logvariance))
 
         return loss, y_hat
-
-    def train_step(self, data, prefix=None):
-        x, y = data
-
-        with tf.GradientTape() as t:
-            loss, y_hat = self.loss_fn(x, y)
-        self.compiled_metrics.update_state(y, y_hat)
-
-        trainable_vars = self.trainable_variables
-        gradients = t.gradient(loss, trainable_vars)
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-
-        if prefix is None:
-            prefix = self.metric_name
-        return {f'{prefix}_{m.name}': m.result() for m in self.metrics}
-
-    @tf.function
-    def wrapped_train_step(self, x, y, features, prefix):
-
-        with tf.GradientTape() as t:
-            loss, y_hat = self.loss_fn(x, y, features)
-        self.compiled_metrics.update_state(y, y_hat)
-
-        trainable_vars = self.trainable_variables
-        gradients = t.gradient(loss, trainable_vars)
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-
-        return {f'{prefix}_{m.name}': m.result() for m in self.metrics}, tf.gradients(loss, features)
 
     def call(self, x, training=False, return_risk=True, features=None):
 
