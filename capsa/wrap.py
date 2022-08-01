@@ -7,6 +7,7 @@ from .wrapper import Wrapper
 
 
 def wrap(model, bias=True, aleatoric=True, epistemic=True):
+    """Abstract away the Wrapper and most parameters to simplify the wrapping process for the user."""
     metric_wrappers = []
     hist_with_vae = None
     add_vae = False
@@ -58,6 +59,7 @@ def wrap(model, bias=True, aleatoric=True, epistemic=True):
         metric_wrappers.extend(
             [i(model, is_standalone=False) for i in out if type(i) == type]
         )
+        metric_wrappers.extend([i for i in out if type(i) != type])
     else:
         out = _check_epistemic_compatibility(epistemic)
         if type(out) == type:

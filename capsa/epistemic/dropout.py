@@ -69,11 +69,12 @@ class DropoutWrapper(keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
     @tf.function
-    def wrapped_train_step(self, x, y, features):
+    def wrapped_train_step(self, x, y, features, prefix):
         # Note that dropout is not supported in wrapped mode
-        pass
+        result = self.train_step((x, y))
+        return {prefix + k: v for k, v in result.items()}
 
-    def call(self, x, training=False, return_risk=True, T=20):
+    def call(self, x, training=False, return_risk=True, features=None, T=20):
         y_hat = self.new_model(x, training=training)
 
         if return_risk:

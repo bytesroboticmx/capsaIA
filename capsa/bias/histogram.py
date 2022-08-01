@@ -120,7 +120,6 @@ class HistogramWrapper(keras.Model):
 
         if self.metric_wrapper is not None:
             # get the correct inputs to histogram if we have an additional metric
-            print("getting VAE features!")
             features = self.metric_wrapper.input_to_histogram(x, training=False)
 
         predictor_y = self.output_layer(features)
