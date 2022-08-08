@@ -4,6 +4,7 @@ from tensorflow import keras
 from ..wrapper import Wrapper
 from ..utils import copy_layer
 import tensorflow_probability as tfp
+from ..epistemic import VAEWrapper
 
 
 class HistogramCallback(tf.keras.callbacks.Callback):
@@ -38,36 +39,34 @@ class HistogramWrapper(keras.Model):
             self.feature_extractor = tf.keras.Model(
                 base_model.inputs, base_model.layers[-2].output
             )
+            last_layer = base_model.layers[-1]
+            self.output_layer = copy_layer(last_layer)  # duplicate last layer
 
-        last_layer = base_model.layers[-1]
-        self.output_layer = copy_layer(last_layer)  # duplicate last layer
         self.histogram_layer = HistogramLayer(num_bins=num_bins)
 
+        # currently only supports VAEs!
         self.metric_wrapper = metric_wrapper
 
     def compile(self, optimizer, loss, *args, **kwargs):
         # replace the given feature extractor with the metric wrapper's extractor if provided
         if self.metric_wrapper is not None:
-            self.metric_wrapper = self.metric_wrapper(
-                base_model=self.base_model, is_standalone=self.is_standalone,
-            )
+            if type(self.metric_wrapper) == type:
+                # we have received an uninitialized wrapper
+                self.metric_wrapper = self.metric_wrapper(
+                    base_model=self.base_model, is_standalone=self.is_standalone,
+                )
+                self.metric_wrapper.compile(
+                    optimizer=optimizer, loss=loss, *args, **kwargs
+                )
             self.output_layer = self.metric_wrapper.output_layer
             self.feature_extractor = self.metric_wrapper.feature_extractor
-            self.metric_wrapper.compile(optimizer=optimizer, loss=loss, *args, **kwargs)
 
         super(HistogramWrapper, self).compile(optimizer=optimizer, loss=loss, **kwargs)
 
     def loss_fn(self, x, y, extractor_out=None):
         if extractor_out is None:
             extractor_out = self.feature_extractor(x, training=True)
-
         hist_input = extractor_out
-        if self.metric_wrapper is not None:
-            hist_input = self.metric_wrapper.input_to_histogram(
-                extractor_out, training=True
-            )
-            loss = self.metric_wrapper.loss_fn(x, y, extractor_out)
-
         self.histogram_layer(hist_input)
         out = self.output_layer(extractor_out)
         loss = tf.reduce_mean(
@@ -78,10 +77,14 @@ class HistogramWrapper(keras.Model):
 
     def train_step(self, data):
         x, y = data
-
         with tf.GradientTape() as t:
-            loss, predictor_y = self.loss_fn(x, y)
-
+            if self.metric_wrapper is not None:
+                _ = self.metric_wrapper.train_step(data)
+                loss, predictor_y = self.loss_fn(
+                    x, y, extractor_out=self.metric_wrapper.input_to_histogram(x)
+                )
+            else:
+                loss, predictor_y = self.loss_fn(x, y)
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
@@ -92,7 +95,14 @@ class HistogramWrapper(keras.Model):
     def wrapped_train_step(self, x, y, features, prefix):
 
         with tf.GradientTape() as t:
-            loss, y_hat = self.loss_fn(x, y, features)
+            if self.metric_wrapper is not None:
+                loss, y_hat = self.loss_fn(
+                    x,
+                    y,
+                    self.metric_wrapper.input_to_histogram(x, extractor_out=features),
+                )
+            else:
+                loss, y_hat = self.loss_fn(x, y, features)
         self.compiled_metrics.update_state(y, y_hat)
 
         trainable_vars = self.trainable_variables
@@ -105,19 +115,15 @@ class HistogramWrapper(keras.Model):
         )
 
     def call(self, x, training=False, return_risk=True, features=None):
-        if self.is_standalone:
+        if self.is_standalone and self.metric_wrapper is None:
             features = self.feature_extractor(x, training=False)
-
-        hist_input = features
 
         if self.metric_wrapper is not None:
             # get the correct inputs to histogram if we have an additional metric
-            hist_input = self.metric_wrapper.input_to_histogram(
-                features, training=False
-            )
+            features = self.metric_wrapper.input_to_histogram(x, training=False)
 
         predictor_y = self.output_layer(features)
-        bias = self.histogram_layer(hist_input, training=False)
+        bias = self.histogram_layer(features, training=False)
 
         return predictor_y, bias
 

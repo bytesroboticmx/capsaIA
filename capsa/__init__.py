@@ -2,6 +2,7 @@
 
 # Controller
 from .wrapper import Wrapper
+from .wrap import wrap
 
 # Bias
 from .bias import HistogramWrapper, HistogramCallback

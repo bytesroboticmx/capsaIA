@@ -12,7 +12,6 @@ class Wrapper(keras.Model):
 
     def __init__(self, base_model, metrics=[]):
         super(Wrapper, self).__init__()
-
         self.metric = metrics
         self.metric_compiled = {}
 
@@ -30,14 +29,16 @@ class Wrapper(keras.Model):
 
         """
         super(Wrapper, self).compile(optimizer, loss, *args, metrics=metrics, **kwargs)
-
+        if type(optimizer) != list:
+            optimizer = [optimizer for _ in self.metric]
+            loss = [loss for _ in self.metric]
         for i, m in enumerate(self.metric):
             # if not 'initialized' e.g., MVEWrapper, RandomNetWrapper
             if type(m) == type:
                 m = m(self.base_model, is_standalone=False)
             # else already 'initialized' e.g., EnsambleWrapper(), VAEWrapper()
             metric = metrics[i] if metrics is not None else [metrics]
-            m.compile(optimizer[i], loss[i], metric)
+            m.compile(optimizer=optimizer[i], loss=loss[i], metrics=metric)
             self.metric_compiled[m.metric_name] = m
 
     @tf.function
@@ -50,9 +51,12 @@ class Wrapper(keras.Model):
         scalar = 1 / len(self.metric)
 
         for name, wrapper in self.metric_compiled.items():
-            keras_metric, grad = wrapper.wrapped_train_step(x, y, features, name)
+            if name != "DropoutWrapper":
+                keras_metric, grad = wrapper.wrapped_train_step(x, y, features, name)
+                accum_grads += tf.scalar_mul(scalar, grad[0])
+            else:
+                keras_metric = wrapper.wrapped_train_step(x, y, features, name)
             keras_metrics.update(keras_metric)
-            accum_grads += tf.scalar_mul(scalar, grad[0])
 
         trainable_vars = self.feature_extractor.trainable_variables
         gradients = tf.gradients(features, trainable_vars, accum_grads)
@@ -60,9 +64,9 @@ class Wrapper(keras.Model):
         return keras_metrics
 
     def call(self, x, training=False, return_risk=True):
-        out = []
+        out = {}
         features = self.feature_extractor(x, training)
 
         for wrapper in self.metric_compiled.values():
-            out.append(wrapper(x, training, return_risk, features))
+            out[wrapper.name] = wrapper(x, training, return_risk, features)
         return out

@@ -36,10 +36,13 @@ class VAEWrapper(keras.Model):
             else:
                 self.decoder = decoder
 
-    def reconstruction_loss(self, mu, log_std, x):
+    def reconstruction_loss(self, mu, log_std, x, training=True):
         # Calculates the VAE reconstruction loss by sampling and then feeding the latent vector through the decoder.
-        sampled_latent_vector = self.sampling_layer([mu, log_std])
-        reconstruction = self.decoder(sampled_latent_vector)
+        if training:
+            sampled_latent_vector = self.sampling_layer([mu, log_std])
+            reconstruction = self.decoder(sampled_latent_vector, training=True)
+        else:
+            reconstruction = self.decoder(mu, training=False)
 
         # Use decoder's reconstruction to compute loss
         mse_loss = tf.reduce_mean(
@@ -79,15 +82,18 @@ class VAEWrapper(keras.Model):
         return {m.name: m.result() for m in self.metrics}
 
     @tf.function
-    def wrapped_train_step(self, x, y, extractor_out):
+    def wrapped_train_step(self, x, y, features, prefix):
         with tf.GradientTape() as t:
-            loss, predictor_y = self.loss_fn(x, y, extractor_out)
+            loss, predictor_y = self.loss_fn(x, y, features)
 
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 
-        return tf.gradients(loss, extractor_out)
+        return (
+            {f"{prefix}_{m.name}": m.result() for m in self.metrics},
+            tf.gradients(loss, features),
+        )
 
     def call(self, x, training=False, return_risk=True, features=None):
         if self.is_standalone:
@@ -102,10 +108,10 @@ class VAEWrapper(keras.Model):
         else:
             return out
 
-    def input_to_histogram(self, extractor_out, training=None):
+    def input_to_histogram(self, x, training=None, extractor_out=None):
         # Needed to interface with the Histogram metric.
+        if extractor_out is None:
+            extractor_out = self.feature_extractor(x, training=training)
         mu = self.mean_layer(extractor_out, training=training)
-        log_std = self.log_std_layer(extractor_out, training=training)
-        out = self.output_layer(extractor_out, training=training)
 
         return mu
