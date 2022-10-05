@@ -1,12 +1,11 @@
 from .utils import (
-    MLP,
+    # MLP,
     get_user_model,
     _get_out_dim,
     plt_vspan,
-    plot_results,
+    plot_epistemic_2d,
     plot_loss,
     copy_layer,
     get_preds_names,
-    Sampling,
-    reverse_model,
+    plot_risk_2d,
 )
