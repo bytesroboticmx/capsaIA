@@ -3,14 +3,64 @@ from tensorflow import keras
 from keras import optimizers as optim
 
 class Wrapper(keras.Model):
-    """ This is a wrapper!
+    """ Implements logic for chaining multiple individual metric wrappers together.
 
-    Args:
-        base_model (model): a model
+    The feature extractor, which we define by default as the model until its last layer, can be leveraged as
+    a shared backbone by multiple wrappers at once to predict multiple compositions of risk. This results
+    in a fast, efficient method of reusing the main body of the model, rather than training multiple models
+    and risk estimation methods from scratch.
 
+    Wrappers can be further composed using a set of metrics, θ, that are faster and more accurate than individual metrics.
+
+    Using capsa, we compose multiple risk metrics to create more robust ways of estimating risk (e.g.,
+    by combining multiple metrics together into a single metric, or alternatively by capturing different
+    measures of risk independently). By using the feature extractor as a shared common backbone,
+    we can optimize for multiple objectives, ensemble multiple metrics, and obtain different types of
+    uncertainty estimates at the same time.
+
+    We propose a novel composability algorithm within capsa to automate and achieve this. Again,
+    we leverage our shared feature extractor as the common backbone of all metrics, and incorporate
+    all model modifications into the feature extractor. Then, we apply the new model augmentations
+    either in series or in parallel, depending on the use case (i.e., we can ensemble a metric in series
+    to average the metric over multiple joint trials, or we can apply ensembling in parallel to estimate
+    a independent measure of risk). Lastly, the model is jointly optimized using all of the relevant loss
+    functions by computing the gradient of each loss with regard to the shared backbone’s weights and
+    stepping into the direction of the accumulated gradient.
+
+    Example usage:
+        >>> # initialize a keras model
+        >>> user_model = Unet()
+        >>> # wrap the model to transform it into a risk-aware variant
+        >>> model = ControllerWrapper(
+        >>>     user_model,
+        >>>     metrics=[
+        >>>         VAEWrapper,
+        >>>         EnsembleWrapper(user_model, is_standalone=False, metric_wrapper=MVEWrapper, num_members=5),
+        >>>     ],
+        >>> )
+        >>> # compile and fit as a regular keras model
+        >>> model.compile(...)
+        >>> model.fit(...)
     """
 
     def __init__(self, base_model, metrics=[]):
+        """
+        Parameters
+        ----------
+        base_model : tf.keras.Model
+            A model which we want to transform into a risk-aware variant
+        metrics : list
+            Contains instances of individual metric wrappers that user wants to train inside the 'ControllerWrapper'
+
+        Attributes
+        ----------
+        feature_extractor : tf.keras.Model
+            Creates a shared 'feature_extractor' that will be used by all metric wrappers specified in 'metrics' for efficiency reasons
+        metric_compiled : dict
+            Will be used to map names of the metric wrappers to corresponding instances
+        optim : tf.keras.optimizer
+            Used to update the shared 'feature_extractor'
+        """
         super(Wrapper, self).__init__()
 
         self.metric = metrics
@@ -22,17 +72,25 @@ class Wrapper(keras.Model):
         )
         self.optim = keras.optimizers.Adam(learning_rate=2e-3)
 
-    def compile(self, optimizer, loss, *args, metrics=[None], **kwargs):
-        """ Compile the wrapper
-
-        Args:
-            optimizer (optimizer): the optimizer
-
+    def compile(self, optimizer, loss, metrics=None, *args, **kwargs):
         """
-        super(Wrapper, self).compile(optimizer, loss, *args, metrics=metrics, **kwargs)
+        Overrides 'tf.keras.Model.compile()'. Compiles every individual metric wrapper.
 
-        # if user passes only 1 optimizer and loss_fn yet they specified e.g. num_members=3,
-        # duplicate that one optimizer and loss_fn for all members in the ensemble
+        If user passes only 1 optimizer and loss_fn yet they specified e.g. N metric wrappers,
+        duplicate that one optimizer and loss_fn N times.
+
+        Parameters
+        ----------
+        optimizer : tf.keras.optimizer or list
+        loss : tf.keras.losses or list
+        metrics : tf.keras.metrics or list, default None
+        """
+        super(Wrapper, self).compile(optimizer, loss, metrics=metrics, *args, **kwargs)
+
+        optimizer = [optimizer] if not isinstance(optimizer, list) else optimizer
+        loss = [loss] if not isinstance(loss, list) else loss
+        metrics = [metrics] if not isinstance(metrics, list) else metrics
+
         if len(optimizer) or len(loss) < range(len(self.metric)):
             optim_conf = optim.serialize(optimizer[0])
             optimizer = [optim.deserialize(optim_conf) for _ in range(len(self.metric))]
@@ -51,6 +109,23 @@ class Wrapper(keras.Model):
 
     @tf.function
     def train_step(self, data):
+        """
+        The shared 'feature extractor' is jointly optimized using all of the relevant loss
+        functions by computing the gradient of each loss with regard to the shared backbone's weights and
+        stepping into the direction of the accumulated gradient.
+
+        Each of the individual metric wrappers is further optimized with its own loss function.
+
+        Parameters
+        ----------
+        data : tuple
+            (x, y) pairs, as in the regular Keras train_step
+
+        Returns
+        -------
+        keras_metrics : dict
+            Keras metrics https://keras.io/api/metrics/, if outside the 'ControllerWrapper'
+        """
         keras_metrics = {}
         x, y = data
 
@@ -69,6 +144,23 @@ class Wrapper(keras.Model):
         return keras_metrics
 
     def call(self, x, training=False, return_risk=True):
+        """
+        Forward pass of the model
+
+        Parameters
+        ----------
+        x : tf.Tensor
+            Input
+        training : bool
+            Can be used to specify a different behavior in training and inference
+        return_risk : bool
+            Indicates whether or not to output a risk estimate in addition to the model's prediction
+
+        Returns
+        -------
+        outs : dict
+            Maps metric wrapper names to their outputs
+        """
         outs = {}
         features = self.feature_extractor(x, training)
         for name, wrapper in self.metric_compiled.items():

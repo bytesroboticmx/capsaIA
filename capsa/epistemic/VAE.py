@@ -17,12 +17,64 @@ def rec_loss(x, rec, reduce=True):
     return tf.reduce_mean(loss) if reduce else loss
 
 class VAEWrapper(BaseWrapper):
+    """
+    (Kingma & Welling, 2013)
 
+    Variational autoencoders (VAEs) are typically used to learn a robust, low-dimensional representation
+    of the latent space. They can be used as a method of estimating epistemic uncertainty by using the
+    reconstruction loss MSE(x, x_hat) - in cases of out-of-distribution data, samples that are hard to learn,
+    or underrepresented samples, we expect that the VAE will have high reconstruction loss, since the
+    mapping to the latent space will be less accurate. Conversely, when the model is very familiar with
+    the features being fed in, or the data is in distribution, we expect the latent space mapping to be
+    robust and the reconstruction loss to be low.
+
+    We're making a restrictive assumption about the prior. Our prior over latent space is a standard unit diagonal gaussian, 
+    so the encoder does not output a high dim Gaussian (doesn't output a full covariance matrix over all dimensions).
+
+    Example usage outside the ControllerWrapper (standalone):
+        >>> # initialize a keras model
+        >>> user_model = Unet()
+        >>> # wrap the model to transform it into a risk-aware variant
+        >>> model = VAEWrapper(user_model)
+        >>> # compile and fit as a regular keras model
+        >>> model.compile(...)
+        >>> model.fit(...)
+
+    Example usage inside the ControllerWrapper:
+        >>> # initialize a keras model
+        >>> user_model = Unet()
+        >>> # wrap the model to transform it into a risk-aware variant
+        >>> model = ControllerWrapper(user_model, metrics=[VAEWrapper])
+        >>> # compile and fit as a regular keras model
+        >>> model.compile(...)
+        >>> model.fit(...)
+    """
     def __init__(self, base_model, is_standalone=True, decoder=None):
+        """
+        Parameters
+        ----------
+        base_model : tf.keras.Model
+            A model which we want to transform into a risk-aware variant
+        is_standalone : bool
+            Indicates whether or not a metric wrapper will be used inside the ControllerWrapper
+        decoder : tf.keras.Model, default None
+            To construct the VAE for any given model in capsa, we use the feature extractor as the encoder, 
+            and reverse the feature extractor automatically when possible to create a decoder.
+
+        Attributes
+        ----------
+        metric_name : str
+            Represents the name of the metric wrapper
+        mean_layer : tf.keras.layers.Layer
+            Used to predict mean of the latent space
+        log_std_layer : tf.keras.layers.Layer
+            Used to predict variance of the latent space
+        feature_extractor : tf.keras.Model
+            Creates a 'feature_extractor' by removing last layer from the 'base_model'
+        """
         super(VAEWrapper, self).__init__(base_model, is_standalone)
 
         self.metric_name = 'vae'
-        # add layers for the mean and variance of the latent space
         latent_dim = self.out_dim[-1]
         self.mean_layer = tf.keras.layers.Dense(latent_dim)
         self.log_std_layer = tf.keras.layers.Dense(latent_dim)
@@ -45,17 +97,76 @@ class VAEWrapper(BaseWrapper):
 
     @staticmethod
     def sampling(z_mean, z_log_var):
+        """
+        Samples from the latent space defied by 'z_mean' and 'z_log_var'.
+        Uses the reparameterization trick allow to backpropagate through the stochastic node
+
+        Parameters
+        ----------
+        z_mean : tf.Tensor
+            Mean of normal distribution representing the latent space 
+        z_log_var : tf.Tensor
+            Log variance of normal distribution representing the latent space
+
+        Returns
+        -------
+        sampled_vector : tf.Tensor
+            Vector sampled form the latent space according to the predicted parameters of the normal distribution
+        """
         epsilon = tf.keras.backend.random_normal(shape=tf.shape(z_mean))
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
     def loss_fn(self, x, _, features=None):
-        # calculates the VAE rec loss by sampling and \
-        # then feeding the latent vector through the decoder.
+        """
+        Calculates the VAE rec loss by sampling and
+        then feeding the latent vector through the decoder
+
+        Parameters
+        ----------
+        x : tf.Tensor
+            Input
+        features : tf.Tensor, default None
+            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
+            is used inside the 'ControllerWrapper', otherwise evaluates to None
+
+        Returns
+        -------
+        loss : tf.Tensor
+            Float, reflects how well does the algorithm perform given the ground truth label, predicted label and the loss function
+        y_hat : tf.Tensor
+            Predicted label
+        """
         y_hat, rec, mu, log_std = self(x, training=True, T=1, features=features)
         loss = kl_loss(mu, log_std) + rec_loss(x, rec)
         return loss, y_hat
 
     def call(self, x, training=False, return_risk=True, features=None, T=1):
+        """
+        Forward pass of the model. Risk estimate could be calculated differently:
+        by running either (1) deterministic or (2) stochastic forward pass.
+
+        Parameters
+        ----------
+        x : tf.Tensor
+            Input
+        training : bool
+            Can be used to specify a different behavior in training and inference
+        return_risk : bool
+            Indicates whether or not to output a risk estimate in addition to the model's prediction
+        features : tf.Tensor, default None
+            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
+            is used inside the 'ControllerWrapper', otherwise evaluates to None
+        T : int
+            Defines will the model be run deterministically or stochastically, and the number of times
+            to sample from the latent space (in case of the stochastic forward)
+
+        Returns
+        -------
+        y_hat : tf.Tensor
+            Predicted label
+        risk : tf.Tensor
+            Epistemic uncertainty estimate
+        """
         if self.is_standalone:
             features = self.feature_extractor(x, training=training)
         y_hat = self.out_layer(features, training=training)

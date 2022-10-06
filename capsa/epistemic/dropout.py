@@ -6,12 +6,42 @@ from keras.layers import Dense, Conv1D, Conv2D, Conv3D, \
 from ..base_wrapper import BaseWrapper
 
 class DropoutWrapper(BaseWrapper):
+    """
+    Adding dropout layers (Srivastava et al., 2014) to a model is one of the simplest ways to capture epistemic
+    uncertainty Gal & Ghahramani (2016). To calculate the uncertainty, we run T forward passes,
+    which is equivalent to Monte Carlo sampling. Computing the first and second moments from the T
+    stochastic samples yields a prediction and uncertainty estimate, respectively.
 
-    ''' Wrapper to calculate epistemic uncertainty by adding 
-    dropout layers after dense layers (or spatial dropout layers after conv layers).
-    '''
+    Calculates epistemic uncertainty by adding dropout layers after dense layers (or spatial dropout layers after conv layers).
+
+    Example usage outside the ControllerWrapper (standalone):
+        >>> # initialize a keras model
+        >>> user_model = Unet()
+        >>> # wrap the model to transform it into a risk-aware variant
+        >>> model = DropoutWrapper(user_model)
+        >>> # compile and fit as a regular keras model
+        >>> model.compile(...)
+        >>> model.fit(...)
+    """
 
     def __init__(self, base_model, is_standalone=True, p=0.1):
+        """
+        Parameters
+        ----------
+        base_model : tf.keras.Model
+            A model which we want to transform into a risk-aware variant
+        is_standalone : bool
+            Indicates whether or not a metric wrapper will be used inside the ControllerWrapper
+        p : float
+            Float between 0 and 1. Fraction of the units to drop. 
+
+        Attributes
+        ----------
+        metric_name : str
+            Represents the name of the metric wrapper
+        new_model : tf.keras.Model
+            'base_model' with added dropout layers
+        """
         super(DropoutWrapper, self).__init__(base_model, is_standalone)
 
         self.metric_name = 'DropoutWrapper'
@@ -19,11 +49,54 @@ class DropoutWrapper(BaseWrapper):
         self.new_model = add_dropout(base_model, p)
 
     def loss_fn(self, x, y, features=None):
+        """
+        Parameters
+        ----------
+        x : tf.Tensor
+            Input
+        y : tf.Tensor
+            Ground truth label
+        features : tf.Tensor, default None
+            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
+            is used inside the 'ControllerWrapper', otherwise evaluates to None
+
+        Returns
+        -------
+        loss : tf.Tensor
+            Float, reflects how well does the algorithm perform given the ground truth label, predicted label and the loss function.
+            In this case it is 0 because 'DropoutWrapper' does not introduce an additional loss function, and the compiled loss
+            is already added in parent class 'BaseWrapper.train_step()'
+        y_hat : tf.Tensor
+            Predicted label
+        """
         y_hat = self.new_model(x, training=True)
         return 0, y_hat
 
-    # todo-low: dropout is not supported in wrapped mode
     def call(self, x, training=False, return_risk=True, T=20):
+        """
+        Forward pass of the model
+
+        Parameters
+        ----------
+        x : tf.Tensor
+            Input
+        training : bool
+            Can be used to specify a different behavior in training and inference
+        return_risk : bool
+            Indicates whether or not to output a risk estimate in addition to the model's prediction
+        features : tf.Tensor, default None
+            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
+            is used inside the 'ControllerWrapper', otherwise evaluates to None
+        T : int
+            Number of forward passes with different dropout masks
+
+        Returns
+        -------
+        y_hat : tf.Tensor
+            Predicted label
+        risk : tf.Tensor
+            Epistemic uncertainty estimate
+        """
         if not return_risk:
             y_hat = self.new_model(x, training=training)
             return y_hat
@@ -32,7 +105,7 @@ class DropoutWrapper(BaseWrapper):
             for _ in range(T):
                 # we need training=True so that dropout is applied
                 outs.append(self.new_model(x, training=True))
-            outs = tf.stack(outs)
+            outs = tf.stack(outs) # (T, N, 1)
             return tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
 
 def add_dropout(model, p):

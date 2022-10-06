@@ -18,13 +18,13 @@ def test_ensemble(use_case):
 
         model = EnsembleWrapper(user_model, num_members=3)
         model.compile(
-            optimizer=[keras.optimizers.Adam(learning_rate=2e-3)],
-            loss=[keras.losses.MeanSquaredError()],
+            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
+            loss=keras.losses.MeanSquaredError(),
             # # metrics could also be specified
-            # metrics=[[
+            # metrics=[
             #     # keras.metrics.MeanSquaredError(name='mse'),
             #     keras.metrics.CosineSimilarity(name='cos'),
-            # ]],
+            # ],
         )
 
         history = model.fit(x, y, epochs=30)
@@ -48,8 +48,8 @@ def test_ensemble(use_case):
         model = EnsembleWrapper(user_model, metric_wrapper=MVEWrapper, num_members=5)
 
         model.compile(
-            optimizer=[keras.optimizers.Adam(learning_rate=2e-3)],
-            loss=[keras.losses.MeanSquaredError()],
+            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
+            loss=keras.losses.MeanSquaredError(),
         )
 
         history = model.fit(ds_train, epochs=30)
@@ -68,11 +68,11 @@ def test_ensemble(use_case):
         )
 
         model.compile(
-            optimizer=[keras.optimizers.Adam(learning_rate=2e-3)],
-            loss=[keras.losses.MeanSquaredError()],
+            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
+            loss=keras.losses.MeanSquaredError(),
         )
 
-        history = model.fit(ds_train, epochs=1)
+        history = model.fit(ds_train, epochs=30)
         plot_loss(history)
 
         metrics_out = model(x_val)
@@ -93,13 +93,12 @@ def test_ensemble(use_case):
         )
 
         model.compile(
-            optimizer=[keras.optimizers.Adam(learning_rate=2e-3)],
-            loss=[keras.losses.MeanSquaredError()],
+            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
+            loss=keras.losses.MeanSquaredError(),
         )
 
         history = model.fit(ds_train, epochs=30)
         plot_loss(history)
-
 
         metrics_out = model(x_val)
 

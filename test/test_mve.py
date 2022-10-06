@@ -31,8 +31,8 @@ def test_regression(use_case):
 
         model.compile(
             # user needs to specify optim and loss for each metric
-            optimizer=[keras.optimizers.Adam(learning_rate=2e-3)],
-            loss=[keras.losses.MeanSquaredError()],
+            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
+            loss=keras.losses.MeanSquaredError(),
         )
 
         history = model.fit(ds_train, epochs=30)
@@ -53,8 +53,8 @@ def test_regression_predict():
 
     model.compile(
         # user needs to specify optim and loss for each metric
-        optimizer=[keras.optimizers.Adam(learning_rate=2e-3)],
-        loss=[keras.losses.MeanSquaredError()],
+        optimizer=keras.optimizers.Adam(learning_rate=2e-3),
+        loss=keras.losses.MeanSquaredError(),
     )
 
     history = model.fit(ds_train, epochs=30)
@@ -100,8 +100,8 @@ def test_regression_predict():
 
 #         model.compile(
 #             # user needs to specify optim and loss for each metric
-#             optimizer=[tf.keras.optimizers.Adam(learning_rate=2e-3)],
-#             loss=[tf.keras.losses.MeanSquaredError()],
+#             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
+#             loss=tf.keras.losses.MeanSquaredError(),
 #         )
 
 #         model.fit(ds_train, epochs=40, callbacks=[HistogramCallback()])

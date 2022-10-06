@@ -3,6 +3,9 @@
 # Controller
 from .wrapper import Wrapper
 
+# Base
+from .base_wrapper import BaseWrapper
+
 # Bias
 from .bias import HistogramWrapper, HistogramCallback
 
