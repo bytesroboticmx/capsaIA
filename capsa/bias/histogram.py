@@ -4,7 +4,6 @@ from tensorflow import keras
 import tensorflow_probability as tfp
 
 from ..base_wrapper import BaseWrapper
-from ..wrapper import Wrapper
 from ..utils import copy_layer
 
 

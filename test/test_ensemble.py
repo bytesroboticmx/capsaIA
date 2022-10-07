@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
 
-from capsa import Wrapper, EnsembleWrapper, MVEWrapper, VAEWrapper
+from capsa import ControllerWrapper, EnsembleWrapper, MVEWrapper, VAEWrapper
 from capsa.utils import get_user_model, plot_loss, get_preds_names, \
     plot_risk_2d, plot_epistemic_2d
 from data import get_data_v1, get_data_v2
@@ -58,33 +58,33 @@ def test_ensemble(use_case):
         y_hat, risk = model(x_val)
         plot_risk_2d(x_val, y_val, y_hat, risk, model.metric_name)
 
-    elif use_case == 3:
+    # elif use_case == 3:
 
-        model = Wrapper(
-            user_model,
-            metrics=[
-                EnsembleWrapper(user_model, is_standalone=False, metric_wrapper=MVEWrapper, num_members=5),
-            ],
-        )
+    #     model = ControllerWrapper(
+    #         user_model,
+    #         metrics=[
+    #             EnsembleWrapper(user_model, is_standalone=False, metric_wrapper=MVEWrapper, num_members=5),
+    #         ],
+    #     )
 
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
-            loss=keras.losses.MeanSquaredError(),
-        )
+    #     model.compile(
+    #         optimizer=keras.optimizers.Adam(learning_rate=2e-3),
+    #         loss=keras.losses.MeanSquaredError(),
+    #     )
 
-        history = model.fit(ds_train, epochs=30)
-        plot_loss(history)
+    #     history = model.fit(ds_train, epochs=30)
+    #     plot_loss(history)
 
-        metrics_out = model(x_val)
-        y_hat, risk = metrics_out['ensemble']
-        plot_risk_2d(x_val, y_val, y_hat, risk, 'ensemble')
+    #     metrics_out = model(x_val)
+    #     y_hat, risk = metrics_out['ensemble']
+    #     plot_risk_2d(x_val, y_val, y_hat, risk, 'ensemble')
 
-        # _, epistemic = metrics_out['VAEWrapper']
-        # epistemic_normalized = (epistemic - np.min(epistemic)) / (np.max(epistemic) - np.min(epistemic))
+    #     # _, epistemic = metrics_out['VAEWrapper']
+    #     # epistemic_normalized = (epistemic - np.min(epistemic)) / (np.max(epistemic) - np.min(epistemic))
 
     elif use_case == 4:
 
-        model = Wrapper(
+        model = ControllerWrapper(
             user_model,
             metrics=[
                 VAEWrapper,
@@ -110,5 +110,5 @@ def test_ensemble(use_case):
 
 test_ensemble(1)
 test_ensemble(2)
-test_ensemble(3)
+# test_ensemble(3)
 test_ensemble(4)

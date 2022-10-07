@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
 
-from capsa import Wrapper, MVEWrapper, HistogramWrapper, HistogramCallback
+from capsa import ControllerWrapper, MVEWrapper, HistogramWrapper, HistogramCallback
 from capsa.utils import get_user_model, plot_loss, get_preds_names, plot_risk_2d
 from data import get_data_v2
 
@@ -27,7 +27,7 @@ def test_regression(use_case):
 
     # user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
     elif use_case == 2:
-        model = Wrapper(user_model, metrics=[MVEWrapper])
+        model = ControllerWrapper(user_model, metrics=[MVEWrapper])
 
         model.compile(
             # user needs to specify optim and loss for each metric
@@ -49,7 +49,7 @@ def test_regression_predict():
     user_model = get_user_model()
     ds_train, ds_val, _, _, _, _ = get_data_v2(batch_size=256, is_show=False)
 
-    model = Wrapper(user_model, metrics=[MVEWrapper])
+    model = ControllerWrapper(user_model, metrics=[MVEWrapper])
 
     model.compile(
         # user needs to specify optim and loss for each metric
@@ -96,7 +96,7 @@ def test_regression_predict():
 #     ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
 #     elif use_case == 2:
 
-#         model = Wrapper(user_model, metrics=[HistogramWrapper])
+#         model = ControllerWrapper(user_model, metrics=[HistogramWrapper])
 
 #         model.compile(
 #             # user needs to specify optim and loss for each metric

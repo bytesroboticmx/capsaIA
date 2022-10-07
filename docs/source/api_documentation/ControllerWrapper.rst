@@ -1,11 +1,11 @@
-.. _api_documentation-wrapper:
+.. _api_documentation-ControllerWrapper:
 
-Wrapper
+ControllerWrapper
 =================
 
 .. note::
   For more examples of using the 'ControllerWrapper' check out 'capsa/tests'.
 
 .. _api_wrapper:
-.. autoclass:: capsa.Wrapper
+.. autoclass:: capsa.ControllerWrapper
     :members:

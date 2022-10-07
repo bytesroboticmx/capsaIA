@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
 
-from capsa import Wrapper, DropoutWrapper
+from capsa import DropoutWrapper
 from capsa.utils import get_user_model, plot_loss, get_preds_names, \
     plot_risk_2d, plot_epistemic_2d
 from data import get_data_v2

@@ -6,8 +6,8 @@ API Documentation
 .. toctree::
     :maxdepth: 1
 
-    wrapper
-    base_wrapper
+    ControllerWrapper
+    BaseWrapper
 
     MVEWrapper
 

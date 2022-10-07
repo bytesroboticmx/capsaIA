@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 from keras import optimizers as optim
 
-class Wrapper(keras.Model):
+class ControllerWrapper(keras.Model):
     """ Implements logic for chaining multiple individual metric wrappers together.
 
     The feature extractor, which we define by default as the model until its last layer, can be leveraged as
@@ -61,7 +61,7 @@ class Wrapper(keras.Model):
         optim : tf.keras.optimizer
             Used to update the shared 'feature_extractor'
         """
-        super(Wrapper, self).__init__()
+        super(ControllerWrapper, self).__init__()
 
         self.metric = metrics
         self.metric_compiled = {}
@@ -85,7 +85,7 @@ class Wrapper(keras.Model):
         loss : tf.keras.losses or list
         metrics : tf.keras.metrics or list, default None
         """
-        super(Wrapper, self).compile(optimizer, loss, metrics=metrics, *args, **kwargs)
+        super(ControllerWrapper, self).compile(optimizer, loss, metrics=metrics, *args, **kwargs)
 
         optimizer = [optimizer] if not isinstance(optimizer, list) else optimizer
         loss = [loss] if not isinstance(loss, list) else loss

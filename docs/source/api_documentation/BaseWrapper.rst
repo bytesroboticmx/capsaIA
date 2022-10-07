@@ -1,4 +1,4 @@
-.. _api_documentation-base_wrapper:
+.. _api_documentation-BaseWrapper:
 
 BaseWrapper
 =================

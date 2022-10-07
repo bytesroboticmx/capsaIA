@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
-from capsa import Wrapper, VAEWrapper
+from capsa import ControllerWrapper, VAEWrapper
 from capsa.utils import get_user_model, plot_loss, get_preds_names, \
     plot_risk_2d, plot_epistemic_2d
 from data import get_data_v2
@@ -28,7 +28,7 @@ def test_vae(use_case):
 
     ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
     elif use_case == 2:
-        model = Wrapper(user_model, metrics=[VAEWrapper])
+        model = ControllerWrapper(user_model, metrics=[VAEWrapper])
         model.compile(
             # user needs to specify optim and loss for each metric
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
