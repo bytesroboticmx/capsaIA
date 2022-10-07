@@ -124,7 +124,7 @@ class ControllerWrapper(keras.Model):
         Returns
         -------
         keras_metrics : dict
-            Keras metrics https://keras.io/api/metrics/, if outside the ``ControllerWrapper``
+            `Keras metrics <https://keras.io/api/metrics/>`_, if outside the ``ControllerWrapper``
         """
         keras_metrics = {}
         x, y = data

@@ -130,7 +130,7 @@ class EnsembleWrapper(BaseWrapper):
             Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
             is used inside the ``ControllerWrapper``, otherwise evaluates to None
         prefix : str, default None
-            Used to modify entries in the dict of [keras metrics](https://keras.io/api/metrics/)
+            Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
             note, this dict contains e.g., loss values for the current epoch/iteration
             not to be confused with what we call metric wrappers.
             Prefix will be passed to the ``train_step`` if the metric wrapper

@@ -74,7 +74,8 @@ class BaseWrapper(keras.Model):
             Extracted ``features`` will be passed to the ``train_step`` if the metric wrapper
             is used inside the ``ControllerWrapper``, otherwise evaluates to None
         prefix : str, default None
-            Used to modify entries in the dict of keras metrics https://keras.io/api/metrics/
+
+            Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
             note, this dict contains e.g., loss values for the current epoch/iteration
             not to be confused with what we call metric wrappers.
             Prefix will be passed to the ``train_step`` if the metric wrapper
@@ -83,7 +84,7 @@ class BaseWrapper(keras.Model):
         Returns
         -------
         keras_metrics : dict
-            Keras metrics https://keras.io/api/metrics/, if outside the ``ControllerWrapper``
+            `Keras metrics <https://keras.io/api/metrics/>`_, if outside the ``ControllerWrapper``
         tuple
             - keras_metrics : dict
             - gradients : tf.Tensor
