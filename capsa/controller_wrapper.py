@@ -50,16 +50,16 @@ class ControllerWrapper(keras.Model):
         base_model : tf.keras.Model
             A model which we want to transform into a risk-aware variant
         metrics : list
-            Contains instances of individual metric wrappers that user wants to train inside the 'ControllerWrapper'
+            Contains instances of individual metric wrappers that user wants to train inside the ``ControllerWrapper``
 
         Attributes
         ----------
         feature_extractor : tf.keras.Model
-            Creates a shared 'feature_extractor' that will be used by all metric wrappers specified in 'metrics' for efficiency reasons
+            Creates a shared ``feature_extractor`` that will be used by all metric wrappers specified in ``metrics`` for efficiency reasons
         metric_compiled : dict
             Will be used to map names of the metric wrappers to corresponding instances
         optim : tf.keras.optimizer
-            Used to update the shared 'feature_extractor'
+            Used to update the shared ``feature_extractor``
         """
         super(ControllerWrapper, self).__init__()
 
@@ -74,7 +74,7 @@ class ControllerWrapper(keras.Model):
 
     def compile(self, optimizer, loss, metrics=None, *args, **kwargs):
         """
-        Overrides 'tf.keras.Model.compile()'. Compiles every individual metric wrapper.
+        Overrides ``tf.keras.Model.compile()``. Compiles every individual metric wrapper.
 
         If user passes only 1 optimizer and loss_fn yet they specified e.g. N metric wrappers,
         duplicate that one optimizer and loss_fn N times.
@@ -110,7 +110,7 @@ class ControllerWrapper(keras.Model):
     @tf.function
     def train_step(self, data):
         """
-        The shared 'feature extractor' is jointly optimized using all of the relevant loss
+        The shared ``feature extractor`` is jointly optimized using all of the relevant loss
         functions by computing the gradient of each loss with regard to the shared backbone's weights and
         stepping into the direction of the accumulated gradient.
 
@@ -124,7 +124,7 @@ class ControllerWrapper(keras.Model):
         Returns
         -------
         keras_metrics : dict
-            Keras metrics https://keras.io/api/metrics/, if outside the 'ControllerWrapper'
+            Keras metrics https://keras.io/api/metrics/, if outside the ``ControllerWrapper``
         """
         keras_metrics = {}
         x, y = data

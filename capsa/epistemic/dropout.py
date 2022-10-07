@@ -31,7 +31,7 @@ class DropoutWrapper(BaseWrapper):
         base_model : tf.keras.Model
             A model which we want to transform into a risk-aware variant
         is_standalone : bool
-            Indicates whether or not a metric wrapper will be used inside the ControllerWrapper
+            Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``
         p : float
             Float between 0 and 1. Fraction of the units to drop. 
 
@@ -40,7 +40,7 @@ class DropoutWrapper(BaseWrapper):
         metric_name : str
             Represents the name of the metric wrapper
         new_model : tf.keras.Model
-            'base_model' with added dropout layers
+            ``base_model`` with added dropout layers
         """
         super(DropoutWrapper, self).__init__(base_model, is_standalone)
 
@@ -57,15 +57,15 @@ class DropoutWrapper(BaseWrapper):
         y : tf.Tensor
             Ground truth label
         features : tf.Tensor, default None
-            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None
 
         Returns
         -------
         loss : tf.Tensor
             Float, reflects how well does the algorithm perform given the ground truth label, predicted label and the loss function.
-            In this case it is 0 because 'DropoutWrapper' does not introduce an additional loss function, and the compiled loss
-            is already added in parent class 'BaseWrapper.train_step()'
+            In this case it is 0 because ``DropoutWrapper`` does not introduce an additional loss function, and the compiled loss
+            is already added in parent class ``BaseWrapper.train_step()``
         y_hat : tf.Tensor
             Predicted label
         """
@@ -85,8 +85,8 @@ class DropoutWrapper(BaseWrapper):
         return_risk : bool
             Indicates whether or not to output a risk estimate in addition to the model's prediction
         features : tf.Tensor, default None
-            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None
         T : int
             Number of forward passes with different dropout masks
 

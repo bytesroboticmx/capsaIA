@@ -33,14 +33,14 @@ class BaseWrapper(keras.Model):
         base_model : tf.keras.Model
             A model which we want to transform into a risk-aware variant
         is_standalone : bool
-            Indicates whether or not a metric wrapper will be used inside the ControllerWrapper
+            Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``
 
         Attributes
         ----------
         feature_extractor : tf.keras.Model
-            Creates a 'feature_extractor' if the metric wrapper will be used outside
-            of the ControllerWrapper ('is_standalone' evaluates to True), otherwise expects extracted features to be passed in train_step
-            (the ControllerWrapper will create a shared 'feature_extractor' and pass the extracted features)
+            Creates a ``feature_extractor`` if the metric wrapper will be used outside
+            of the ControllerWrapper (``is_standalone`` evaluates to True), otherwise expects extracted features to be passed in train_step
+            (the ControllerWrapper will create a shared ``feature_extractor`` and pass the extracted features)
         out_layer : tf.keras.layers.Layer
             A duplicate of the last layer of the base_model which is used to predict y_hat
             (predicts same output as before the wrapping)
@@ -71,23 +71,23 @@ class BaseWrapper(keras.Model):
         data : tuple
             (x, y) pairs, as in the regular Keras train_step
         features : tf.Tensor, default None
-            Extracted 'features' will be passed to the 'train_step' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``train_step`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None
         prefix : str, default None
             Used to modify entries in the dict of keras metrics https://keras.io/api/metrics/
             note, this dict contains e.g., loss values for the current epoch/iteration
             not to be confused with what we call metric wrappers.
-            Prefix will be passed to the 'train_step' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None.
+            Prefix will be passed to the ``train_step`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None.
 
         Returns
         -------
         keras_metrics : dict
-            Keras metrics https://keras.io/api/metrics/, if outside the 'ControllerWrapper'
+            Keras metrics https://keras.io/api/metrics/, if outside the ``ControllerWrapper``
         tuple
             - keras_metrics : dict
             - gradients : tf.Tensor
-                Gradient wrt to the input, if inside the 'ControllerWrapper'
+                Gradient wrt to the input, if inside the ``ControllerWrapper``
         """
         x, y = data
 
@@ -120,8 +120,8 @@ class BaseWrapper(keras.Model):
         y : tf.Tensor
             Ground truth label
         features : tf.Tensor, default None
-            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None
 
         Raises
         ------
@@ -142,8 +142,8 @@ class BaseWrapper(keras.Model):
         return_risk : bool
             Indicates whether or not to output a risk estimate in addition to the model's prediction
         features : tf.Tensor, default None
-            Extracted 'features' will be passed to the 'call' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``call`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None
 
         Raises
         ------

@@ -47,7 +47,7 @@ class MVEWrapper(BaseWrapper):
         base_model : tf.keras.Model
             A model which we want to transform into a risk-aware variant
         is_standalone : bool
-            Indicates whether or not a metric wrapper will be used inside the ControllerWrapper
+            Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``
 
         Attributes
         ----------
@@ -73,8 +73,8 @@ class MVEWrapper(BaseWrapper):
         y : tf.Tensor
             Ground truth label
         features : tf.Tensor, default None
-            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None
 
         Returns
         -------
@@ -100,8 +100,8 @@ class MVEWrapper(BaseWrapper):
         return_risk : bool
             Indicates whether or not to output a risk estimate in addition to the model's prediction
         features : tf.Tensor, default None
-            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None
 
         Returns
         -------

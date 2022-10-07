@@ -41,10 +41,10 @@ class EnsembleWrapper(BaseWrapper):
         base_model : tf.keras.Model
             A model which we want to transform into a risk-aware variant
         is_standalone : bool, default True
-            Indicates whether or not a metric wrapper will be used inside the ControllerWrapper
+            Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``
         # todo-high: it's the class itself like MVEWrapper
         metric_wrapper : tf.keras.Model.BaseWrapper, default None
-            Instance of a metric wrapper that user wants to ensemble, it it's 'None' this wrapper ensembles the 'base_model'
+            Instance of a metric wrapper that user wants to ensemble, it it's ``None`` this wrapper ensembles the ``base_model``
         num_members : int
             Number of members in the deep ensemble
 
@@ -53,7 +53,7 @@ class EnsembleWrapper(BaseWrapper):
         metric_name : str
             Represents the name of the metric wrapper
         metrics_compiled : dict
-            An empty dict, will be used to map 'metric_name's of the metric that user wants to ensemble to their respective compiled models
+            An empty dict, will be used to map ``metric_name``s of the metric that user wants to ensemble to their respective compiled models
         """
         super(EnsembleWrapper, self).__init__(base_model, is_standalone)
 
@@ -67,7 +67,7 @@ class EnsembleWrapper(BaseWrapper):
 
     def compile(self, optimizer, loss, metrics=None):
         """
-        Overrides 'tf.keras.Model.compile()'. Compiles every member in the deep ensemble.
+        Overrides ``tf.keras.Model.compile()``. Compiles every member in the deep ensemble.
 
         If user passes only 1 optimizer and loss_fn yet they specified e.g. num_members=3,
         duplicate that one optimizer and loss_fn for all members in the ensemble
@@ -118,30 +118,30 @@ class EnsembleWrapper(BaseWrapper):
 
     def train_step(self, data, features=None, prefix=None):
         """
-        If 'EnsembleWrapper' is used inside the 'ControllerWrapper' (in other words, when 'features' are provided by the 'ControllerWrapper'),
-        the gradient of each member's loss w.r.t to its input ('features') is computed and averaged out between members in the ensemble,
-        it is later used in the 'ControllerWrapper' to updated the shared 'feature extractor'
+        If ``EnsembleWrapper`` is used inside the ``ControllerWrapper`` (in other words, when ``features`` are provided by the ``ControllerWrapper``),
+        the gradient of each member's loss w.r.t to its input (``features``) is computed and averaged out between members in the ensemble,
+        it is later used in the ``ControllerWrapper`` to updated the shared ``feature extractor``
 
         Parameters
         ----------
         data : tuple
             (x, y) pairs, as in the regular Keras train_step
         features : tf.Tensor, default None
-            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None
         prefix : str, default None
-            Used to modify entries in the dict of keras metrics https://keras.io/api/metrics/
+            Used to modify entries in the dict of [keras metrics](https://keras.io/api/metrics/)
             note, this dict contains e.g., loss values for the current epoch/iteration
             not to be confused with what we call metric wrappers.
-            Prefix will be passed to the 'train_step' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None.
+            Prefix will be passed to the ``train_step`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None.
 
         Returns
         -------
         tuple
             - keras_metrics : dict
             - gradients : tf.Tensor
-                Gradient wrt to the input, if inside the 'ControllerWrapper'
+                Gradient wrt to the input, if inside the ``ControllerWrapper``
         """
         keras_metrics = {}
 
@@ -186,8 +186,8 @@ class EnsembleWrapper(BaseWrapper):
         return_risk : bool
             Indicates whether or not to output a risk estimate in addition to the model's prediction
         features : tf.Tensor, default None
-            Extracted 'features' will be passed to the 'call' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``call`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None
 
         Returns
         -------

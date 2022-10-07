@@ -56,7 +56,7 @@ class VAEWrapper(BaseWrapper):
         base_model : tf.keras.Model
             A model which we want to transform into a risk-aware variant
         is_standalone : bool
-            Indicates whether or not a metric wrapper will be used inside the ControllerWrapper
+            Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``
         decoder : tf.keras.Model, default None
             To construct the VAE for any given model in capsa, we use the feature extractor as the encoder, 
             and reverse the feature extractor automatically when possible to create a decoder.
@@ -70,7 +70,7 @@ class VAEWrapper(BaseWrapper):
         log_std_layer : tf.keras.layers.Layer
             Used to predict variance of the latent space
         feature_extractor : tf.keras.Model
-            Creates a 'feature_extractor' by removing last layer from the 'base_model'
+            Creates a ``feature_extractor`` by removing last layer from the ``base_model``
         """
         super(VAEWrapper, self).__init__(base_model, is_standalone)
 
@@ -98,7 +98,7 @@ class VAEWrapper(BaseWrapper):
     @staticmethod
     def sampling(z_mean, z_log_var):
         """
-        Samples from the latent space defied by 'z_mean' and 'z_log_var'.
+        Samples from the latent space defied by ``z_mean`` and ``z_log_var``.
         Uses the reparameterization trick allow to backpropagate through the stochastic node
 
         Parameters
@@ -126,8 +126,8 @@ class VAEWrapper(BaseWrapper):
         x : tf.Tensor
             Input
         features : tf.Tensor, default None
-            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None
 
         Returns
         -------
@@ -154,8 +154,8 @@ class VAEWrapper(BaseWrapper):
         return_risk : bool
             Indicates whether or not to output a risk estimate in addition to the model's prediction
         features : tf.Tensor, default None
-            Extracted 'features' will be passed to the 'loss_fn' if the metric wrapper
-            is used inside the 'ControllerWrapper', otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to None
         T : int
             Defines will the model be run deterministically or stochastically, and the number of times
             to sample from the latent space (in case of the stochastic forward)
