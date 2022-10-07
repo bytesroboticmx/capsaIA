@@ -43,7 +43,7 @@ class EnsembleWrapper(BaseWrapper):
         is_standalone : bool, default True
             Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``
         # todo-high: it's the class itself like MVEWrapper
-        metric_wrapper : tf.keras.Model.BaseWrapper, default None
+        metric_wrapper : capsa.BaseWrapper, default None
             Instance of a metric wrapper that user wants to ensemble, it it's ``None`` this wrapper ensembles the ``base_model``
         num_members : int, default 1
             Number of members in the deep ensemble

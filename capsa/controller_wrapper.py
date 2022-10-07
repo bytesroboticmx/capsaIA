@@ -50,7 +50,7 @@ class ControllerWrapper(keras.Model):
         base_model : tf.keras.Model
             A model which we want to transform into a risk-aware variant
         metrics : list, default []
-            Contains instances of individual metric wrappers that user wants to train inside the ``ControllerWrapper``
+            Contains instances of individual metric wrappers (which subclass ``capsa.BaseWrapper``) that user wants to train inside the ``ControllerWrapper``
 
         Attributes
         ----------
