@@ -30,9 +30,9 @@ class DropoutWrapper(BaseWrapper):
         ----------
         base_model : tf.keras.Model
             A model which we want to transform into a risk-aware variant
-        is_standalone : bool
+        is_standalone : bool, default True
             Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``
-        p : float
+        p : float, default 0.1
             Float between 0 and 1. Fraction of the units to drop. 
 
         Attributes
@@ -80,14 +80,14 @@ class DropoutWrapper(BaseWrapper):
         ----------
         x : tf.Tensor
             Input
-        training : bool
+        training : bool, default False
             Can be used to specify a different behavior in training and inference
-        return_risk : bool
+        return_risk : bool, default True
             Indicates whether or not to output a risk estimate in addition to the model's prediction
         features : tf.Tensor, default None
             Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
             is used inside the ``ControllerWrapper``, otherwise evaluates to None
-        T : int
+        T : int, default 20
             Number of forward passes with different dropout masks
 
         Returns

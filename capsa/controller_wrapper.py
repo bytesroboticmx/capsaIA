@@ -49,7 +49,7 @@ class ControllerWrapper(keras.Model):
         ----------
         base_model : tf.keras.Model
             A model which we want to transform into a risk-aware variant
-        metrics : list
+        metrics : list, default []
             Contains instances of individual metric wrappers that user wants to train inside the ``ControllerWrapper``
 
         Attributes
@@ -151,9 +151,9 @@ class ControllerWrapper(keras.Model):
         ----------
         x : tf.Tensor
             Input
-        training : bool
+        training : bool, default False
             Can be used to specify a different behavior in training and inference
-        return_risk : bool
+        return_risk : bool, default True
             Indicates whether or not to output a risk estimate in addition to the model's prediction
 
         Returns

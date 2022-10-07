@@ -55,7 +55,7 @@ class VAEWrapper(BaseWrapper):
         ----------
         base_model : tf.keras.Model
             A model which we want to transform into a risk-aware variant
-        is_standalone : bool
+        is_standalone : bool, default True
             Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``
         decoder : tf.keras.Model, default None
             To construct the VAE for any given model in capsa, we use the feature extractor as the encoder, 
@@ -149,14 +149,14 @@ class VAEWrapper(BaseWrapper):
         ----------
         x : tf.Tensor
             Input
-        training : bool
+        training : bool, default False
             Can be used to specify a different behavior in training and inference
-        return_risk : bool
+        return_risk : bool, default True
             Indicates whether or not to output a risk estimate in addition to the model's prediction
         features : tf.Tensor, default None
             Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
             is used inside the ``ControllerWrapper``, otherwise evaluates to None
-        T : int
+        T : int, default 1
             Defines will the model be run deterministically or stochastically, and the number of times
             to sample from the latent space (in case of the stochastic forward)
 

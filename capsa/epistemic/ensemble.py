@@ -45,7 +45,7 @@ class EnsembleWrapper(BaseWrapper):
         # todo-high: it's the class itself like MVEWrapper
         metric_wrapper : tf.keras.Model.BaseWrapper, default None
             Instance of a metric wrapper that user wants to ensemble, it it's ``None`` this wrapper ensembles the ``base_model``
-        num_members : int
+        num_members : int, default 1
             Number of members in the deep ensemble
 
         Attributes
@@ -181,9 +181,9 @@ class EnsembleWrapper(BaseWrapper):
         ----------
         x : tf.Tensor
             Input
-        training : bool
+        training : bool, default False
             Can be used to specify a different behavior in training and inference
-        return_risk : bool
+        return_risk : bool, default True
             Indicates whether or not to output a risk estimate in addition to the model's prediction
         features : tf.Tensor, default None
             Extracted ``features`` will be passed to the ``call`` if the metric wrapper
