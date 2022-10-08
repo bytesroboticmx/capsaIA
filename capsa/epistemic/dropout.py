@@ -6,15 +6,17 @@ from keras.layers import Dense, Conv1D, Conv2D, Conv3D, \
 from ..base_wrapper import BaseWrapper
 
 class DropoutWrapper(BaseWrapper):
-    """
-    Adding dropout layers (Srivastava et al., 2014) to a model is one of the simplest ways to capture epistemic
-    uncertainty Gal & Ghahramani (2016). To calculate the uncertainty, we run T forward passes,
-    which is equivalent to Monte Carlo sampling. Computing the first and second moments from the T
-    stochastic samples yields a prediction and uncertainty estimate, respectively.
+    """ Adds dropout layers (Srivastava et al., 2014) to capture epistemic
+    uncertainty Gal & Ghahramani (2016).
 
-    Calculates epistemic uncertainty by adding dropout layers after dense layers (or spatial dropout layers after conv layers).
+    Calculates epistemic uncertainty by adding dropout layers after dense layers
+    (or spatial dropout layers after conv layers).
 
-    Example usage outside the ControllerWrapper (standalone):
+    To calculate the uncertainty, we run ``T`` forward passes, which is equivalent to
+    Monte Carlo sampling. Computing the first and second moments from the ``T`` stochastic
+    samples yields a prediction and uncertainty estimate, respectively.
+
+    Example usage outside of the ``ControllerWrapper`` (standalone):
         >>> # initialize a keras model
         >>> user_model = Unet()
         >>> # wrap the model to transform it into a risk-aware variant
@@ -29,18 +31,18 @@ class DropoutWrapper(BaseWrapper):
         Parameters
         ----------
         base_model : tf.keras.Model
-            A model which we want to transform into a risk-aware variant
+            A model to be transformed into a risk-aware variant.
         is_standalone : bool, default True
-            Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``
+            Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``.
         p : float, default 0.1
             Float between 0 and 1. Fraction of the units to drop. 
 
         Attributes
         ----------
         metric_name : str
-            Represents the name of the metric wrapper
+            Represents the name of the metric wrapper.
         new_model : tf.keras.Model
-            ``base_model`` with added dropout layers
+            ``base_model`` with added dropout layers.
         """
         super(DropoutWrapper, self).__init__(base_model, is_standalone)
 
@@ -53,21 +55,22 @@ class DropoutWrapper(BaseWrapper):
         Parameters
         ----------
         x : tf.Tensor
-            Input
+            Input.
         y : tf.Tensor
-            Ground truth label
+            Ground truth label.
         features : tf.Tensor, default None
             Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to None
+            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
 
         Returns
         -------
         loss : tf.Tensor
-            Float, reflects how well does the algorithm perform given the ground truth label, predicted label and the loss function.
-            In this case it is 0 because ``DropoutWrapper`` does not introduce an additional loss function, and the compiled loss
-            is already added in parent class ``BaseWrapper.train_step()``
+            Float, reflects how well does the algorithm perform given the ground truth label,
+            predicted label and the metric specific loss function. In this case it is
+            0 because ``DropoutWrapper`` does not introduce an additional loss function,
+            and the compiled loss is already added in the parent class ``BaseWrapper.train_step()``.
         y_hat : tf.Tensor
-            Predicted label
+            Predicted label.
         """
         y_hat = self.new_model(x, training=True)
         return 0, y_hat
@@ -79,23 +82,23 @@ class DropoutWrapper(BaseWrapper):
         Parameters
         ----------
         x : tf.Tensor
-            Input
+            Input.
         training : bool, default False
-            Can be used to specify a different behavior in training and inference
+            Can be used to specify a different behavior in training and inference.
         return_risk : bool, default True
-            Indicates whether or not to output a risk estimate in addition to the model's prediction
+            Indicates whether or not to output a risk estimate in addition to the model's prediction.
         features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to None
+            Extracted ``features`` will be passed to the ``call`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
         T : int, default 20
-            Number of forward passes with different dropout masks
+            Number of forward passes with different dropout masks.
 
         Returns
         -------
         y_hat : tf.Tensor
             Predicted label
-        risk : tf.Tensor
-            Epistemic uncertainty estimate
+        risk : tf.Tensor.
+            Epistemic uncertainty estimate.
         """
         if not return_risk:
             y_hat = self.new_model(x, training=training)
