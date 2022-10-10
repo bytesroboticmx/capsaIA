@@ -26,7 +26,7 @@ def test_vae(use_case):
 
         y_hat, risk = model(x_val)
 
-    ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
+    ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a 'controller wrapper')
     elif use_case == 2:
         model = ControllerWrapper(user_model, metrics=[VAEWrapper])
         model.compile(
@@ -45,5 +45,5 @@ def test_vae(use_case):
     plot_risk_2d(x_val, y_val, y_hat, risk, preds_names[0])
     # plot_epistemic_2d(x, y, x_val, y_val, y_hat, risk)
 
-test_vae(use_case=1)
-test_vae(use_case=2)
+test_vae(1)
+test_vae(2)

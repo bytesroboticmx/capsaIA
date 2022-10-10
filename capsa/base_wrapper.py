@@ -69,7 +69,9 @@ class BaseWrapper(keras.Model):
     @tf.function
     def train_step(self, data, features=None, prefix=None):
         """
-        Note: adds compiled loss such that the models that subclass this class don't need to explicitly add it.
+        Note: adds the compiled loss such that the models that subclass this class don't need to explicitly add it.
+        Thus the ``metric_loss`` returned from such a model is not expected to reflect the compiled
+        (user specified) loss -- because it is added here.
 
         Parameters
         ----------

@@ -135,7 +135,7 @@ class EnsembleWrapper(BaseWrapper):
             Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
             such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
             Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
-            not to be confused with what we call "metric wrappers". Prefix will be passed to 
+            not to be confused with what we call 'metric wrappers'. Prefix will be passed to 
             the ``train_step`` if the metric wrapper is used inside the ``ControllerWrapper``,
             otherwise evaluates to ``None``.
 
@@ -151,7 +151,7 @@ class EnsembleWrapper(BaseWrapper):
         """
         keras_metrics = {}
 
-        if features != None:
+        if not self.is_standalone:
             accum_grads = tf.zeros_like(features)
             scalar = 1 / self.num_members
 
@@ -174,7 +174,7 @@ class EnsembleWrapper(BaseWrapper):
                     accum_grads += tf.scalar_mul(scalar, grad[0])
                 keras_metrics.update(keras_metric)
 
-        if features is None:
+        if self.is_standalone:
             return keras_metrics
         else:
             return keras_metrics, accum_grads

@@ -189,21 +189,22 @@ class VAEWrapper(BaseWrapper):
 
             # stochastic
             else:
-                sampled_latent = self.sampling(mu, log_std)
                 if training:
+                    sampled_latent = self.sampling(mu, log_std)
                     rec = self.decoder(sampled_latent)
                     return y_hat, rec, mu, log_std
                 else:
                     recs = []
                     for _ in T:
+                        sampled_latent = self.sampling(mu, log_std)
                         recs.append(self.decoder(sampled_latent))
                     return y_hat, tf.reduce_std(recs)
 
-    def input_to_histogram(self, training, features=None):
-        # needed to interface with the HistogramWrapper
+    def input_to_histogram(self, x, training=None, features=None):
+        # needed to interface with the Histogram metric
+        if self.is_standalone:
+            features = self.feature_extractor(x, training=training)
         mu = self.mean_layer(features, training=training)
-        log_std = self.log_std_layer(features, training=training)
-        out = self.out_layer(features, training=training)
         return mu
 
 def reverse_model(model, latent_dim):

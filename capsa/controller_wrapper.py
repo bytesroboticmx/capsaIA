@@ -84,7 +84,7 @@ class ControllerWrapper(keras.Model):
         loss : tf.keras.losses or list
         metrics : tf.keras.metrics or list, default None
         """
-        super(ControllerWrapper, self).compile(optimizer, loss, metrics=metrics, *args, **kwargs)
+        super(ControllerWrapper, self).compile(optimizer, loss, metrics, *args, **kwargs)
 
         optimizer = [optimizer] if not isinstance(optimizer, list) else optimizer
         loss = [loss] if not isinstance(loss, list) else loss

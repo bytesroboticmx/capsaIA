@@ -36,11 +36,11 @@ def test_ensemble(use_case):
         # outs = model(x_val)
         # preds_names = get_preds_names(history)
 
-        # plt.plot(x_val, y_val, "r-", label="ground truth")
-        # plt.scatter(x, y, label="train data")
+        # plt.plot(x_val, y_val, 'r-', label='ground truth')
+        # plt.scatter(x, y, label='train data')
         # for i, out in enumerate(outs):
         #     plt.plot(x_val, out, label=preds_names[i])
-        # plt.legend(loc="upper left")
+        # plt.legend(loc='upper left')
         # plt.show()
 
     elif use_case == 2:

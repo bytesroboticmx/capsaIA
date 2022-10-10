@@ -25,7 +25,7 @@ def test_regression(use_case):
 
         y_hat, risk = model(x_val)
 
-    # user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
+    # user can interact with a MetricWrapper through Wrapper (what we call a 'controller wrapper')
     elif use_case == 2:
         model = ControllerWrapper(user_model, metrics=[MVEWrapper])
 
@@ -88,12 +88,12 @@ def test_regression_predict():
 #         )
 #         history = model.fit(ds_train, epochs=30, callbacks=[HistogramCallback()])
 
-#         plt.plot(history.history["loss"])
+#         plt.plot(history.history['loss'])
 #         plt.show()
 
 #         y_hat, risk = model(x_val)
 
-#     ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
+#     ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a 'controller wrapper')
 #     elif use_case == 2:
 
 #         model = ControllerWrapper(user_model, metrics=[HistogramWrapper])

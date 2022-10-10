@@ -27,7 +27,7 @@ def test_exceptions(use_case):
                 return x
 
             # def get_config(self):
-            #     return {"hidden_units": self.hidden_units}
+            #     return {'hidden_units': self.hidden_units}
 
             # @classmethod
             # def from_config(cls, config):
@@ -44,7 +44,7 @@ def test_exceptions(use_case):
             history = model.fit(x, y, epochs=100)
 
         except AssertionError:
-            print(f"test_exceptions_{use_case} worked!")
+            print(f'test_exceptions_{use_case} worked!')
 
     elif use_case == 2:
 
@@ -70,4 +70,4 @@ def test_exceptions(use_case):
             history = model.fit(x, y, epochs=100)
 
         except Exception:
-            print(f"test_exceptions_{use_case} worked!")
+            print(f'test_exceptions_{use_case} worked!')
