@@ -1,5 +1,7 @@
-# numpy
-# tensorflow-gpu
+numpy
+matplotlib
+tensorflow-gpu
+tensorflow-probability
 sphinx
 sphinx_rtd_theme
 sphinx-tabs
