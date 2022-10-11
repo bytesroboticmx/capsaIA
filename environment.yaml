@@ -4,13 +4,16 @@ channels:
   - conda-forge
   - anaconda
 dependencies:
-  - sphinx
   - python
+  - sphinx
   - sphinx_rtd_theme
   - furo
   - sphinx-tabs
   - sphinx-material
   - numpy
   - tensorflow-gpu
-prefix: /home/amini/miniconda3/envs/capsa
-
+  - pip
+  # pip dependencies
+  - pip:
+    - tensorflow-probability
+    - matplotlib

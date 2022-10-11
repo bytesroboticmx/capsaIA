@@ -1,10 +1,10 @@
 from numpy import histogram
 import tensorflow as tf
 from tensorflow import keras
-from ..wrapper import Wrapper
-from ..utils import copy_layer
 import tensorflow_probability as tfp
-from ..epistemic import VAEWrapper
+
+from ..controller_wrapper import ControllerWrapper
+from ..base_wrapper import BaseWrapper
 
 
 class HistogramCallback(tf.keras.callbacks.Callback):
@@ -12,40 +12,30 @@ class HistogramCallback(tf.keras.callbacks.Callback):
         if epoch > 0:
             if type(self.model) == HistogramWrapper:
                 self.model.histogram_layer.update_state()
-            elif type(self.model) == Wrapper:
+            elif type(self.model) == ControllerWrapper:
                 for name, m in self.model.metric_compiled.items():
                     if name == "HistogramWrapper":
                         m.histogram_layer.update_state()
 
 
-class HistogramWrapper(keras.Model):
+class HistogramWrapper(BaseWrapper):
     """
-        A wrapper that generates feature histograms for a given model.
+    A wrapper that generates feature histograms for a given model.
 
-        Args:
-            base_model (model): the model to generate features from
-            metric_wrapper: currently can only be a VAE and the 
-                histogram will be constructed with these features instead if not None.
-            num_bins: how many bins to use in the histogram
+    Args:
+        base_model (model): the model to generate features from
+        metric_wrapper: currently can only be a VAE and the
+            histogram will be constructed with these features instead if not None.
+        num_bins: how many bins to use in the histogram
     """
 
     def __init__(self, base_model, is_standalone=True, num_bins=5, metric_wrapper=None):
-        super(HistogramWrapper, self).__init__()
-        self.base_model = base_model
-        self.metric_name = "HistogramWrapper"
-        self.is_standalone = is_standalone
+        super(HistogramWrapper, self).__init__(base_model, is_standalone)
 
-        if is_standalone:
-            self.feature_extractor = tf.keras.Model(
-                base_model.inputs, base_model.layers[-2].output
-            )
-            last_layer = base_model.layers[-1]
-            self.output_layer = copy_layer(last_layer)  # duplicate last layer
-
-        self.histogram_layer = HistogramLayer(num_bins=num_bins)
-
-        # currently only supports VAEs!
+        self.metric_name = "histogram"
         self.metric_wrapper = metric_wrapper
+        # currently only supports VAEs!
+        self.histogram_layer = HistogramLayer(num_bins)
 
     def compile(self, optimizer, loss, *args, **kwargs):
         # replace the given feature extractor with the metric wrapper's extractor if provided
@@ -53,66 +43,54 @@ class HistogramWrapper(keras.Model):
             if type(self.metric_wrapper) == type:
                 # we have received an uninitialized wrapper
                 self.metric_wrapper = self.metric_wrapper(
-                    base_model=self.base_model, is_standalone=self.is_standalone,
+                    base_model=self.base_model,
+                    is_standalone=self.is_standalone,
                 )
                 self.metric_wrapper.compile(
                     optimizer=optimizer, loss=loss, *args, **kwargs
                 )
-            self.output_layer = self.metric_wrapper.output_layer
+            self.out_layer = self.metric_wrapper.out_layer
             self.feature_extractor = self.metric_wrapper.feature_extractor
 
         super(HistogramWrapper, self).compile(optimizer=optimizer, loss=loss, **kwargs)
 
-    def loss_fn(self, x, y, extractor_out=None):
-        if extractor_out is None:
-            extractor_out = self.feature_extractor(x, training=True)
-        hist_input = extractor_out
+    def loss_fn(self, x, y, features=None):
+        if self.is_standalone:
+            features = self.feature_extractor(x, training=True)
+        hist_input = features
         self.histogram_layer(hist_input)
-        out = self.output_layer(extractor_out)
+        out = self.out_layer(features)
         loss = tf.reduce_mean(
             self.compiled_loss(y, out, regularization_losses=self.losses),
         )
 
         return loss, out
 
-    def train_step(self, data):
+    def train_step(self, data, features=None, prefix=None):
         x, y = data
-        with tf.GradientTape() as t:
-            if self.metric_wrapper is not None:
-                _ = self.metric_wrapper.train_step(data)
-                loss, predictor_y = self.loss_fn(
-                    x, y, extractor_out=self.metric_wrapper.input_to_histogram(x)
-                )
-            else:
-                loss, predictor_y = self.loss_fn(x, y)
-        trainable_vars = self.trainable_variables
-        gradients = t.gradient(loss, trainable_vars)
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-        self.compiled_metrics.update_state(y, predictor_y)
-        return {m.name: m.result() for m in self.metrics}
-
-    @tf.function
-    def wrapped_train_step(self, x, y, features, prefix):
 
         with tf.GradientTape() as t:
             if self.metric_wrapper is not None:
+                if not self.is_standalone:
+                    _ = self.metric_wrapper.train_step(data)
                 loss, y_hat = self.loss_fn(
-                    x,
-                    y,
-                    self.metric_wrapper.input_to_histogram(x, extractor_out=features),
+                    x, y, self.metric_wrapper.input_to_histogram(x, features=features)
                 )
             else:
                 loss, y_hat = self.loss_fn(x, y, features)
-        self.compiled_metrics.update_state(y, y_hat)
 
         trainable_vars = self.trainable_variables
         gradients = t.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 
-        return (
-            {f"{prefix}_{m.name}": m.result() for m in self.metrics},
-            tf.gradients(loss, features),
-        )
+        self.compiled_metrics.update_state(y, y_hat)
+        prefix = self.metric_name if prefix is None else prefix
+        keras_metrics = {f"{prefix}_{m.name}": m.result() for m in self.metrics}
+
+        if self.is_standalone:
+            return keras_metrics
+        else:
+            return keras_metrics, tf.gradients(loss, features)
 
     def call(self, x, training=False, return_risk=True, features=None):
         if self.is_standalone and self.metric_wrapper is None:
@@ -122,14 +100,14 @@ class HistogramWrapper(keras.Model):
             # get the correct inputs to histogram if we have an additional metric
             features = self.metric_wrapper.input_to_histogram(x, training=False)
 
-        predictor_y = self.output_layer(features)
+        y_hat = self.out_layer(features)
         bias = self.histogram_layer(features, training=False)
 
-        return predictor_y, bias
+        return y_hat, bias
 
 
 class HistogramLayer(tf.keras.layers.Layer):
-    """A custom layer that tracks the distribution of feature values during training. 
+    """A custom layer that tracks the distribution of feature values during training.
     Outputs the probability of a sample given this feature distribution at inferenfce time.
     """
 

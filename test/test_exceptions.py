@@ -27,7 +27,7 @@ def test_exceptions(use_case):
                 return x
 
             # def get_config(self):
-            #     return {"hidden_units": self.hidden_units}
+            #     return {'hidden_units': self.hidden_units}
 
             # @classmethod
             # def from_config(cls, config):
@@ -58,7 +58,7 @@ def test_exceptions(use_case):
                     return self.config
 
                 def call(self, x):
-                    return x ** 2
+                    return x**2
 
             their_model = SquareNums()
 

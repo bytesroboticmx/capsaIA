@@ -3,7 +3,7 @@ from tensorflow import keras
 from .aleatoric import MVEWrapper
 from .bias import HistogramWrapper
 from .epistemic import VAEWrapper, DropoutWrapper, EnsembleWrapper
-from .wrapper import Wrapper
+from .controller_wrapper import ControllerWrapper
 
 
 def wrap(model, bias=True, aleatoric=True, epistemic=True):
@@ -78,7 +78,7 @@ def wrap(model, bias=True, aleatoric=True, epistemic=True):
         hist_with_vae.metric_wrapper = vae
         metric_wrappers.append(vae)
 
-    return Wrapper(model, metrics=metric_wrappers)
+    return ControllerWrapper(model, metrics=metric_wrappers)
 
 
 def _check_bias_compatibility(bias):

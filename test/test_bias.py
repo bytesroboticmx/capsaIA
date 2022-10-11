@@ -2,53 +2,51 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
-from capsa import Wrapper, HistogramWrapper, VAEWrapper, HistogramCallback, wrap
-from capsa.utils import get_user_model, plt_vspan, plot_results, plot_loss
+from capsa import (
+    ControllerWrapper,
+    wrap,
+    HistogramWrapper,
+    VAEWrapper,
+    HistogramCallback,
+)
+from capsa.utils import get_user_model, plt_vspan, plot_loss
 from data import get_data_v1, get_data_v2
 
 
-def test_bias(use_case=None):
+def test_bias(use_case):
 
-    their_model = get_user_model()
-    ds_train, ds_val, x_val, y_val = get_data_v2(batch_size=256)
+    user_model = get_user_model()
+    ds_train, ds_val, x, y, x_val, y_val = get_data_v2(batch_size=256)
 
     ### use case 1 - user can interact with a MetricWrapper directly
     if use_case == 1:
-        model = HistogramWrapper(their_model)
+        model = HistogramWrapper(user_model)
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
             loss=tf.keras.losses.MeanSquaredError(),
         )
         history = model.fit(ds_train, epochs=30, callbacks=[HistogramCallback()])
-
-        plt.plot(history.history["loss"])
+        plt.plot(history.history["histogram_loss"])
         plt.show()
 
         y_pred, bias = model(x_val)
 
-    ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a "controller wrapper")
+    ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a 'controller wrapper')
     elif use_case == 2:
 
-        # make 'controller' wrapper behave like a tf model, such that user can interact with it
-        # the same as they directly a any of the MetricWrappers (see 3 lines above)
-        # so in controller Wrapper implement compile() and fit() methods
-        model = Wrapper(their_model, metrics=[HistogramWrapper],)
+        model = ControllerWrapper(user_model, metrics=[HistogramWrapper])
 
         model.compile(
             # user needs to specify optim and loss for each metric
             optimizer=[tf.keras.optimizers.Adam(learning_rate=2e-3)],
-            # note reduction needs to be NONE, model reduces to mean under the hood
-            loss=[
-                tf.keras.losses.MeanSquaredError(
-                    reduction=tf.keras.losses.Reduction.NONE
-                )
-            ],
+            loss=[tf.keras.losses.MeanSquaredError()],
+            run_eagerly=True,
         )
 
         model.fit(ds_train, epochs=40, callbacks=[HistogramCallback()])
 
         metrics_out = model(x_val)
-        y_pred, bias = metrics_out["histogram_wrapper"]
+        y_pred, bias = metrics_out["histogram"]
 
     fig, axs = plt.subplots(2)
     axs[0].scatter(x_val, y_val, s=0.5, label="gt")
@@ -61,10 +59,10 @@ def test_bias(use_case=None):
 
 
 def test_bias_chained():
-    their_model = get_user_model()
-    ds_train, _, x_val, y_val = get_data_v2(batch_size=256)
+    user_model = get_user_model()
+    ds_train, ds_val, x, y, x_val, y_val = get_data_v2(batch_size=256)
 
-    model = HistogramWrapper(their_model, metric_wrapper=VAEWrapper)
+    model = HistogramWrapper(user_model, metric_wrapper=VAEWrapper)
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
         loss=tf.keras.losses.MeanSquaredError(),
@@ -86,10 +84,10 @@ def test_bias_chained():
 
 def test_bias_with_wrap(complexity):
     # First level of complexity
-    their_model = get_user_model()
-    ds_train, ds_val, x_val, y_val = get_data_v2(batch_size=256)
+    user_model = get_user_model()
+    ds_train, ds_val, x, y, x_val, y_val = get_data_v2(batch_size=256)
     if complexity == 1:
-        wrapped_model = wrap(their_model)
+        wrapped_model = wrap(user_model)
         wrapped_model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
             loss=tf.keras.losses.MeanSquaredError(),
@@ -99,7 +97,7 @@ def test_bias_with_wrap(complexity):
         )
 
         outputs = wrapped_model(x_val)
-        y_pred, bias = outputs["histogram_wrapper"]
+        y_pred, bias = outputs["histogram"]
         y_pred, mve = outputs["mve_wrapper"]
         y_pred, recon_loss = outputs["vae_wrapper"]
         fig, axs = plt.subplots(4)
@@ -114,7 +112,7 @@ def test_bias_with_wrap(complexity):
         plt.show()
 
     if complexity == 2:
-        wrapped_model = wrap(their_model, bias=False)
+        wrapped_model = wrap(user_model, bias=False)
         wrapped_model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
             loss=tf.keras.losses.MeanSquaredError(),
@@ -136,7 +134,7 @@ def test_bias_with_wrap(complexity):
 
     if complexity == 3:
         wrapped_model = wrap(
-            their_model, bias=False, epistemic=["VAEWrapper", "DropoutWrapper"]
+            user_model, bias=False, epistemic=["VAEWrapper", "DropoutWrapper"]
         )
         wrapped_model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
@@ -161,9 +159,9 @@ def test_bias_with_wrap(complexity):
 
     if complexity == 4:
         wrapped_model = wrap(
-            their_model,
+            user_model,
             bias=False,
-            epistemic=[VAEWrapper(their_model, is_standalone=False), "DropoutWrapper"],
+            epistemic=[VAEWrapper(user_model, is_standalone=False), "DropoutWrapper"],
         )
         wrapped_model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
@@ -189,9 +187,7 @@ def test_bias_with_wrap(complexity):
         plt.show()
 
 
-test_bias_with_wrap(complexity=4)
-
-test_bias(use_case=1)
-test_bias(use_case=2)
-test_bias_chained()
-
+test_bias(1)
+test_bias(2)
+# test_bias_chained()
+# test_bias_with_wrap(4)

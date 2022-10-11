@@ -6,4 +6,11 @@ API Documentation
 .. toctree::
     :maxdepth: 1
 
-    wrapper
+    ControllerWrapper
+    BaseWrapper
+
+    MVEWrapper
+
+    VAEWrapper
+    EnsembleWrapper
+    DropoutWrapper

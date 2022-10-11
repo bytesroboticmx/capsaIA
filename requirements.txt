@@ -1,5 +1,5 @@
-numpy
-tensorflow-gpu
+# numpy
+# tensorflow-gpu
 sphinx
 sphinx_rtd_theme
 sphinx-tabs
