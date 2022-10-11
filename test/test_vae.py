@@ -3,9 +3,15 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from capsa import ControllerWrapper, VAEWrapper
-from capsa.utils import get_user_model, plot_loss, get_preds_names, \
-    plot_risk_2d, plot_epistemic_2d
+from capsa.utils import (
+    get_user_model,
+    plot_loss,
+    get_preds_names,
+    plot_risk_2d,
+    plot_epistemic_2d,
+)
 from data import get_data_v2
+
 
 def test_vae(use_case):
 
@@ -40,10 +46,11 @@ def test_vae(use_case):
         plot_loss(history)
 
         metrics_out = model(x_val)
-        y_hat, risk = metrics_out['vae']
+        y_hat, risk = metrics_out["vae"]
 
     plot_risk_2d(x_val, y_val, y_hat, risk, preds_names[0])
     # plot_epistemic_2d(x, y, x_val, y_val, y_hat, risk)
+
 
 test_vae(1)
 test_vae(2)

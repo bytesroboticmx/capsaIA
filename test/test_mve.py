@@ -7,6 +7,7 @@ from capsa import ControllerWrapper, MVEWrapper, HistogramWrapper, HistogramCall
 from capsa.utils import get_user_model, plot_loss, get_preds_names, plot_risk_2d
 from data import get_data_v2
 
+
 def test_regression(use_case):
 
     user_model = get_user_model()
@@ -39,10 +40,11 @@ def test_regression(use_case):
         plot_loss(history)
 
         metrics_out = model(x_val)
-        y_hat, risk = metrics_out['mve']
+        y_hat, risk = metrics_out["mve"]
 
     preds_names = get_preds_names(history)
     plot_risk_2d(x_val, y_val, y_hat, risk, preds_names[0])
+
 
 def test_regression_predict():
 
@@ -63,7 +65,7 @@ def test_regression_predict():
     # predict cats batch output to a single tensor under the hood
     # metrics_out is a list (of len 1) of tuples (x_val_batch, y_val_batch)
     metrics_out = model.predict(ds_val)
-    y_hat, risk = metrics_out['mve']
+    y_hat, risk = metrics_out["mve"]
 
     # need this for plotting -- cat all batches
     # list(ds_val) is a list (of len num of batches) of tuples (x_val_batch, y_val_batch)
@@ -71,7 +73,7 @@ def test_regression_predict():
     x_val, y_val = cat[0], cat[1]
 
     preds_names = get_preds_names(history)
-    plot_risk_2d(x_val, y_val, y_hat, risk, 'mve')
+    plot_risk_2d(x_val, y_val, y_hat, risk, "mve")
 
 
 # def test_bias(use_case):

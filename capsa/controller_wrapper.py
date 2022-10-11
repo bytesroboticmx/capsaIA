@@ -2,8 +2,9 @@ import tensorflow as tf
 from tensorflow import keras
 from keras import optimizers as optim
 
+
 class ControllerWrapper(keras.Model):
-    """ Implements logic for chaining multiple individual metric wrappers together.
+    """Implements logic for chaining multiple individual metric wrappers together.
 
     The feature extractor, which we define by default as the model until its last layer, can be leveraged as
     a shared backbone by multiple wrappers at once to predict multiple compositions of risk. This results
@@ -84,7 +85,9 @@ class ControllerWrapper(keras.Model):
         loss : tf.keras.losses or list
         metrics : tf.keras.metrics or list, default None
         """
-        super(ControllerWrapper, self).compile(optimizer, loss, metrics, *args, **kwargs)
+        super(ControllerWrapper, self).compile(
+            optimizer, loss, metrics, *args, **kwargs
+        )
 
         optimizer = [optimizer] if not isinstance(optimizer, list) else optimizer
         loss = [loss] if not isinstance(loss, list) else loss
@@ -110,7 +113,7 @@ class ControllerWrapper(keras.Model):
     def train_step(self, data):
         """
         The shared ``feature extractor`` is jointly optimized using all of the relevant loss
-        functions, by computing the gradient of each metric wrapper's loss with respect to the 
+        functions, by computing the gradient of each metric wrapper's loss with respect to the
         ``feature extractor``'s weights and stepping into the direction of the accumulated gradient.
 
         Each of the individual metric wrappers is further separately optimized with its own loss function.

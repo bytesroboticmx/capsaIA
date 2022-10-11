@@ -5,10 +5,10 @@ from ..base_wrapper import BaseWrapper
 
 
 class EnsembleWrapper(BaseWrapper):
-    """ Uses an ensemble of N models (each one is randomly initialized) to accurately
+    """Uses an ensemble of N models (each one is randomly initialized) to accurately
     estimate epistemic uncertainty Lakshminarayanan et al. (2017).
 
-    This approach presents the gold-standard of estimating epistemic uncertainty. 
+    This approach presents the gold-standard of estimating epistemic uncertainty.
     However, it comes with significant computational costs.
 
     Example usage outside of the ``ControllerWrapper`` (standalone):
@@ -33,7 +33,9 @@ class EnsembleWrapper(BaseWrapper):
         >>> model.fit(...)
     """
 
-    def __init__(self, base_model, is_standalone=True, metric_wrapper=None, num_members=1):
+    def __init__(
+        self, base_model, is_standalone=True, metric_wrapper=None, num_members=1
+    ):
         """
         Parameters
         ----------
@@ -57,7 +59,7 @@ class EnsembleWrapper(BaseWrapper):
         """
         super(EnsembleWrapper, self).__init__(base_model, is_standalone)
 
-        self.metric_name = 'ensemble'
+        self.metric_name = "ensemble"
         self.is_standalone = is_standalone
         self.base_model = base_model
 
@@ -92,7 +94,7 @@ class EnsembleWrapper(BaseWrapper):
             metrics = [metrics[0] for _ in range(self.num_members)]
 
         base_model_config = self.base_model.get_config()
-        assert base_model_config != {}, 'Please implement get_config().'
+        assert base_model_config != {}, "Please implement get_config()."
 
         for i in range(self.num_members):
 
@@ -101,7 +103,9 @@ class EnsembleWrapper(BaseWrapper):
             elif isinstance(self.base_model, keras.Model):
                 m = keras.Model.from_config(base_model_config)
             else:
-                raise Exception('Please provide a Sequential, Functional or subclassed model.')
+                raise Exception(
+                    "Please provide a Sequential, Functional or subclassed model."
+                )
 
             m = (
                 m
@@ -109,9 +113,9 @@ class EnsembleWrapper(BaseWrapper):
                 else self.metric_wrapper(m, self.is_standalone)
             )
             m_name = (
-                f'usermodel_{i}'
+                f"usermodel_{i}"
                 if self.metric_wrapper is None
-                else f'{m.metric_name}_{i}'
+                else f"{m.metric_name}_{i}"
             )
             m.compile(optimizer[i], loss[i], metrics[i])
             self.metrics_compiled[m_name] = m
@@ -119,9 +123,9 @@ class EnsembleWrapper(BaseWrapper):
     def train_step(self, data, features=None, prefix=None):
         """
         If ``EnsembleWrapper`` is used inside the ``ControllerWrapper`` (in other words, when
-        ``features`` are provided by the ``ControllerWrapper``), the gradient of each member's 
-        loss w.r.t to its input (``features``) is computed and averaged out between members in 
-        the ensemble, it is later used in the ``ControllerWrapper`` to update the shared 
+        ``features`` are provided by the ``ControllerWrapper``), the gradient of each member's
+        loss w.r.t to its input (``features``) is computed and averaged out between members in
+        the ensemble, it is later used in the ``ControllerWrapper`` to update the shared
         ``feature extractor``.
 
         Parameters
@@ -135,7 +139,7 @@ class EnsembleWrapper(BaseWrapper):
             Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
             such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
             Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
-            not to be confused with what we call 'metric wrappers'. Prefix will be passed to 
+            not to be confused with what we call 'metric wrappers'. Prefix will be passed to
             the ``train_step`` if the metric wrapper is used inside the ``ControllerWrapper``,
             otherwise evaluates to ``None``.
 
@@ -161,7 +165,7 @@ class EnsembleWrapper(BaseWrapper):
             if self.metric_wrapper is None:
                 _ = wrapper.train_step(data)
                 for m in wrapper.metrics:
-                    keras_metrics[f'{name}_{m.name}'] = m.result()
+                    keras_metrics[f"{name}_{m.name}"] = m.result()
 
             # ensembling one of our metrics
             else:
@@ -170,7 +174,9 @@ class EnsembleWrapper(BaseWrapper):
                     keras_metric = wrapper.train_step(data, features, name)
                 # within controller wrapper
                 else:
-                    keras_metric, grad = wrapper.train_step(data, features, f'{prefix}_{name}')
+                    keras_metric, grad = wrapper.train_step(
+                        data, features, f"{prefix}_{name}"
+                    )
                     accum_grads += tf.scalar_mul(scalar, grad[0])
                 keras_metrics.update(keras_metric)
 
@@ -218,6 +224,6 @@ class EnsembleWrapper(BaseWrapper):
             return tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
         # ensembling one of our own metrics
         else:
-            y_hats = outs[:, 0] #  (n_members, 2, N, 1) -> (n_members, N, 1)
-            risks = outs[:, 1] #  (n_members, 2, N, 1) -> (n_members, N, 1)
+            y_hats = outs[:, 0]  #  (n_members, 2, N, 1) -> (n_members, N, 1)
+            risks = outs[:, 1]  #  (n_members, 2, N, 1) -> (n_members, N, 1)
             return tf.reduce_mean(y_hats, 0), tf.math.reduce_mean(risks, 0)

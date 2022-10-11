@@ -83,11 +83,11 @@ def wrap(model, bias=True, aleatoric=True, epistemic=True):
 
 def _check_bias_compatibility(bias):
     bias_named_wrappers = {
-        'HistogramWrapper': HistogramWrapper,
+        "HistogramWrapper": HistogramWrapper,
     }
     add_vae = False
     if type(bias) == str and bias in bias_named_wrappers.keys():
-        add_vae = bias == 'HistogramWrapper'
+        add_vae = bias == "HistogramWrapper"
         return bias_named_wrappers[bias], add_vae
     elif type(bias) == type and bias in bias_named_wrappers.values():
         add_vae = bias == HistogramWrapper
@@ -100,12 +100,12 @@ def _check_bias_compatibility(bias):
                 return bias, bias.metric_wrapper
     else:
         raise ValueError(
-            f'Must pass in either a string (one of {bias_named_wrappers.keys()}) or wrapper types (one of {bias_named_wrappers.values()}) or an instance of a wrapper type. Received {bias}'
+            f"Must pass in either a string (one of {bias_named_wrappers.keys()}) or wrapper types (one of {bias_named_wrappers.values()}) or an instance of a wrapper type. Received {bias}"
         )
 
 
 def _check_aleatoric_compatibility(aleatoric):
-    aleatoric_named_wrappers = {'MVEWrapper': MVEWrapper}
+    aleatoric_named_wrappers = {"MVEWrapper": MVEWrapper}
     if type(aleatoric) == str and aleatoric in aleatoric_named_wrappers.keys():
         return aleatoric_named_wrappers[aleatoric]
     elif type(aleatoric) == type and aleatoric in aleatoric_named_wrappers.values():
@@ -114,15 +114,15 @@ def _check_aleatoric_compatibility(aleatoric):
         return aleatoric
     else:
         raise ValueError(
-            f'Must pass in either a string (one of {aleatoric_named_wrappers.keys()}) or wrapper types (one of {aleatoric_named_wrappers.values()}) or an instance of a wrapper type. Received {aleatoric}'
+            f"Must pass in either a string (one of {aleatoric_named_wrappers.keys()}) or wrapper types (one of {aleatoric_named_wrappers.values()}) or an instance of a wrapper type. Received {aleatoric}"
         )
 
 
 def _check_epistemic_compatibility(epistemic):
     epistemic_named_wrappers = {
-        'DropoutWrapper': DropoutWrapper,
-        'EnsembleWrapper': EnsembleWrapper,
-        'VAEWrapper': VAEWrapper,
+        "DropoutWrapper": DropoutWrapper,
+        "EnsembleWrapper": EnsembleWrapper,
+        "VAEWrapper": VAEWrapper,
     }
     if type(epistemic) == str and epistemic in epistemic_named_wrappers.keys():
         return epistemic_named_wrappers[epistemic]
@@ -132,5 +132,5 @@ def _check_epistemic_compatibility(epistemic):
         return epistemic
     else:
         raise ValueError(
-            f'Must pass in either a string (one of {epistemic_named_wrappers.keys()}) or wrapper types (one of {epistemic_named_wrappers.values()}) or an instance of a wrapper type. Received {epistemic}'
+            f"Must pass in either a string (one of {epistemic_named_wrappers.keys()}) or wrapper types (one of {epistemic_named_wrappers.values()}) or an instance of a wrapper type. Received {epistemic}"
         )

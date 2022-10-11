@@ -4,8 +4,13 @@ import tensorflow as tf
 from tensorflow import keras
 
 from capsa import ControllerWrapper, EnsembleWrapper, MVEWrapper, VAEWrapper
-from capsa.utils import get_user_model, plot_loss, get_preds_names, \
-    plot_risk_2d, plot_epistemic_2d
+from capsa.utils import (
+    get_user_model,
+    plot_loss,
+    get_preds_names,
+    plot_risk_2d,
+    plot_epistemic_2d,
+)
 from data import get_data_v1, get_data_v2
 
 
@@ -88,7 +93,12 @@ def test_ensemble(use_case):
             user_model,
             metrics=[
                 VAEWrapper,
-                EnsembleWrapper(user_model, is_standalone=False, metric_wrapper=MVEWrapper, num_members=5),
+                EnsembleWrapper(
+                    user_model,
+                    is_standalone=False,
+                    metric_wrapper=MVEWrapper,
+                    num_members=5,
+                ),
             ],
         )
 
@@ -102,11 +112,12 @@ def test_ensemble(use_case):
 
         metrics_out = model(x_val)
 
-        vae_y_hat, vae_risk = metrics_out['vae']
-        plot_risk_2d(x_val, y_val, vae_y_hat, vae_risk, 'vae')
+        vae_y_hat, vae_risk = metrics_out["vae"]
+        plot_risk_2d(x_val, y_val, vae_y_hat, vae_risk, "vae")
 
-        mve_y_hat, mve_risk = metrics_out['ensemble']
-        plot_risk_2d(x_val, y_val, mve_y_hat, mve_risk, 'ensemble of mve')
+        mve_y_hat, mve_risk = metrics_out["ensemble"]
+        plot_risk_2d(x_val, y_val, mve_y_hat, mve_risk, "ensemble of mve")
+
 
 test_ensemble(1)
 test_ensemble(2)

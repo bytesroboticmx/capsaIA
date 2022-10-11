@@ -4,13 +4,15 @@ from tensorflow import keras
 from ..utils import copy_layer
 from ..base_wrapper import BaseWrapper
 
+
 def neg_log_likelihood(y, mu, logvar):
     variance = tf.exp(logvar)
     loss = logvar + (y - mu) ** 2 / variance
     return tf.reduce_mean(loss)
 
+
 class MVEWrapper(BaseWrapper):
-    """ Mean and Variance Estimation (Nix & Weigend, 1994). This metric
+    """Mean and Variance Estimation (Nix & Weigend, 1994). This metric
     wrapper models aleatoric uncertainty.
 
     In the regression case, we pass the outputs of the model's feature extractor
@@ -61,9 +63,9 @@ class MVEWrapper(BaseWrapper):
         """
         super(MVEWrapper, self).__init__(base_model, is_standalone)
 
-        self.metric_name = 'mve'
-        self.out_mu = copy_layer(self.out_layer, override_activation='linear')
-        self.out_logvar = copy_layer(self.out_layer, override_activation='linear')
+        self.metric_name = "mve"
+        self.out_mu = copy_layer(self.out_layer, override_activation="linear")
+        self.out_logvar = copy_layer(self.out_layer, override_activation="linear")
 
     def loss_fn(self, x, y, features=None):
         """

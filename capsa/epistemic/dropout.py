@@ -1,12 +1,21 @@
 import tensorflow as tf
 from tensorflow import keras
-from keras.layers import Dense, Conv1D, Conv2D, Conv3D, \
-    Dropout, SpatialDropout1D, SpatialDropout2D, SpatialDropout3D
+from keras.layers import (
+    Dense,
+    Conv1D,
+    Conv2D,
+    Conv3D,
+    Dropout,
+    SpatialDropout1D,
+    SpatialDropout2D,
+    SpatialDropout3D,
+)
 
 from ..base_wrapper import BaseWrapper
 
+
 class DropoutWrapper(BaseWrapper):
-    """ Adds dropout layers (Srivastava et al., 2014) to capture epistemic
+    """Adds dropout layers (Srivastava et al., 2014) to capture epistemic
     uncertainty Gal & Ghahramani (2016).
 
     Calculates epistemic uncertainty by adding dropout layers after dense layers
@@ -35,7 +44,7 @@ class DropoutWrapper(BaseWrapper):
         is_standalone : bool, default True
             Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``.
         p : float, default 0.1
-            Float between 0 and 1. Fraction of the units to drop. 
+            Float between 0 and 1. Fraction of the units to drop.
 
         Attributes
         ----------
@@ -46,7 +55,7 @@ class DropoutWrapper(BaseWrapper):
         """
         super(DropoutWrapper, self).__init__(base_model, is_standalone)
 
-        self.metric_name = 'DropoutWrapper'
+        self.metric_name = "DropoutWrapper"
         self.is_standalone = is_standalone
         self.new_model = add_dropout(base_model, p)
 
@@ -108,8 +117,9 @@ class DropoutWrapper(BaseWrapper):
             for _ in range(T):
                 # we need training=True so that dropout is applied
                 outs.append(self.new_model(x, training=True))
-            outs = tf.stack(outs) # (T, N, 1)
+            outs = tf.stack(outs)  # (T, N, 1)
             return tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
+
 
 def add_dropout(model, p):
     inputs = model.layers[0].input
@@ -125,25 +135,13 @@ def add_dropout(model, p):
             next_layer = model.layers[i + 1]
             x = cur_layer(x)
             # we do not repeat dropout layers if they're already added
-            if (
-                type(cur_layer) == Dense
-                and type(next_layer) != Dropout
-            ):
+            if type(cur_layer) == Dense and type(next_layer) != Dropout:
                 x = Dropout(rate=p)(x)
-            elif (
-                type(cur_layer) == Conv1D
-                and type(next_layer) != SpatialDropout1D
-            ):
+            elif type(cur_layer) == Conv1D and type(next_layer) != SpatialDropout1D:
                 x = SpatialDropout1D(rate=p)(x)
-            elif (
-                type(cur_layer) == Conv2D
-                and type(next_layer) != SpatialDropout2D
-            ):
+            elif type(cur_layer) == Conv2D and type(next_layer) != SpatialDropout2D:
                 x = SpatialDropout2D(rate=p)(x)
-            elif (
-                type(cur_layer) == Conv3D
-                and type(next_layer) != SpatialDropout3D
-            ):
+            elif type(cur_layer) == Conv3D and type(next_layer) != SpatialDropout3D:
                 x = SpatialDropout1D(rate=p)(x)
 
     new_model = tf.keras.Model(inputs, x)

@@ -7,17 +7,21 @@ from keras import layers
 from ..utils import copy_layer, _get_out_dim
 from ..base_wrapper import BaseWrapper
 
+
 def kl_loss(mu, log_std):
     return -0.5 * tf.reduce_mean(
-        1 + log_std - tf.math.square(mu) - tf.math.square(tf.math.exp(log_std)), axis=-1,
+        1 + log_std - tf.math.square(mu) - tf.math.square(tf.math.exp(log_std)),
+        axis=-1,
     )
+
 
 def rec_loss(x, rec, reduce=True):
     loss = tf.reduce_sum(tf.math.square(x - rec), axis=-1)
     return tf.reduce_mean(loss) if reduce else loss
 
+
 class VAEWrapper(BaseWrapper):
-    """ Uses Variational autoencoders (VAEs) (Kingma & Welling, 2013) to estimate
+    """Uses Variational autoencoders (VAEs) (Kingma & Welling, 2013) to estimate
     epistemic uncertainty.
 
     VAEs are typically used to learn a robust, low-dimensional representation
@@ -29,7 +33,7 @@ class VAEWrapper(BaseWrapper):
     is very familiar with the features being fed in, or the data is in distribution,
     we expect the latent space mapping to be robust and the reconstruction loss to be low.
 
-    We're making a restrictive assumption about the prior. Our prior over latent space is a 
+    We're making a restrictive assumption about the prior. Our prior over latent space is a
     standard unit diagonal gaussian. In other words, the encoder doesn't output a full covariance
     matrix over all dimensions (doesn't output a high dim Gaussian).
 
@@ -51,6 +55,7 @@ class VAEWrapper(BaseWrapper):
         >>> model.compile(...)
         >>> model.fit(...)
     """
+
     def __init__(self, base_model, is_standalone=True, decoder=None):
         """
         Parameters
@@ -76,24 +81,26 @@ class VAEWrapper(BaseWrapper):
         """
         super(VAEWrapper, self).__init__(base_model, is_standalone)
 
-        self.metric_name = 'vae'
+        self.metric_name = "vae"
         latent_dim = self.out_dim[-1]
         self.mean_layer = tf.keras.layers.Dense(latent_dim)
         self.log_std_layer = tf.keras.layers.Dense(latent_dim)
 
-        # unlike other wrappers, vae needs a feature_extractor 
+        # unlike other wrappers, vae needs a feature_extractor
         # regardless of is_standalone to create a decoder below
         self.feature_extractor = tf.keras.Model(
             base_model.inputs, base_model.layers[-2].output
         )
 
         # reverse model if we can, accept user decoder if we cannot
-        if hasattr(self.feature_extractor, 'layers'):
+        if hasattr(self.feature_extractor, "layers"):
             self.decoder = reverse_model(self.feature_extractor, latent_dim)
         else:
             if decoder is None:
-                raise ValueError('If you provide a subclassed model, \
-                    the decoder must also be specified')
+                raise ValueError(
+                    "If you provide a subclassed model, \
+                    the decoder must also be specified"
+                )
             else:
                 self.decoder = decoder
 
@@ -207,6 +214,7 @@ class VAEWrapper(BaseWrapper):
         mu = self.mean_layer(features, training=training)
         return mu
 
+
 def reverse_model(model, latent_dim):
     inputs = tf.keras.Input(shape=latent_dim)
     i = len(model.layers) - 1
@@ -221,6 +229,7 @@ def reverse_model(model, latent_dim):
                 x = reverse_layer(model.layers[i])(x)
         i -= 1
     return tf.keras.Model(inputs, x)
+
 
 def reverse_layer(layer, output_shape=None):
     config = layer.get_config()
@@ -245,27 +254,27 @@ def reverse_layer(layer, output_shape=None):
     conv = [layers.Conv1D, layers.Conv2D, layers.Conv3D]
 
     if layer_type == layers.Dense:
-        config['units'] = layer.input_shape[-1]
+        config["units"] = layer.input_shape[-1]
         return layers.Dense.from_config(config)
     elif layer_type in unchanged_layers:
         return type(layer).from_config(config)
     elif layer_type in pooling_1D:
-        return layers.UpSampling1D(size=config['pool_size'])
+        return layers.UpSampling1D(size=config["pool_size"])
     elif layer_type in pooling_2D:
         return layers.UpSampling2D(
-            size=config['pool_size'],
-            data_format=config['data_format'],
-            interpolation='bilinear',
+            size=config["pool_size"],
+            data_format=config["data_format"],
+            interpolation="bilinear",
         )
     elif layer_type in pooling_3D:
         return layers.UpSampling3D(
-            size=config['pool_size'],
-            data_format=config['data_format'],
-            interpolation='bilinear',
+            size=config["pool_size"],
+            data_format=config["data_format"],
+            interpolation="bilinear",
         )
     elif layer_type in conv:
         if output_shape is not None:
-            config['filters'] = output_shape[0][-1]
+            config["filters"] = output_shape[0][-1]
 
         if layer_type == layers.Conv1D:
             return layers.Conv1DTranspose.from_config(config)

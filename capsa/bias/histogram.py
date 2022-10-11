@@ -20,19 +20,19 @@ class HistogramCallback(tf.keras.callbacks.Callback):
 
 class HistogramWrapper(BaseWrapper):
     """
-        A wrapper that generates feature histograms for a given model.
+    A wrapper that generates feature histograms for a given model.
 
-        Args:
-            base_model (model): the model to generate features from
-            metric_wrapper: currently can only be a VAE and the 
-                histogram will be constructed with these features instead if not None.
-            num_bins: how many bins to use in the histogram
+    Args:
+        base_model (model): the model to generate features from
+        metric_wrapper: currently can only be a VAE and the
+            histogram will be constructed with these features instead if not None.
+        num_bins: how many bins to use in the histogram
     """
 
     def __init__(self, base_model, is_standalone=True, num_bins=5, metric_wrapper=None):
         super(HistogramWrapper, self).__init__(base_model, is_standalone)
 
-        self.metric_name = 'histogram'
+        self.metric_name = "histogram"
         self.metric_wrapper = metric_wrapper
         # currently only supports VAEs!
         self.histogram_layer = HistogramLayer(num_bins)
@@ -43,7 +43,8 @@ class HistogramWrapper(BaseWrapper):
             if type(self.metric_wrapper) == type:
                 # we have received an uninitialized wrapper
                 self.metric_wrapper = self.metric_wrapper(
-                    base_model=self.base_model, is_standalone=self.is_standalone,
+                    base_model=self.base_model,
+                    is_standalone=self.is_standalone,
                 )
                 self.metric_wrapper.compile(
                     optimizer=optimizer, loss=loss, *args, **kwargs
@@ -84,7 +85,7 @@ class HistogramWrapper(BaseWrapper):
 
         self.compiled_metrics.update_state(y, y_hat)
         prefix = self.metric_name if prefix is None else prefix
-        keras_metrics = {f'{prefix}_{m.name}': m.result() for m in self.metrics}
+        keras_metrics = {f"{prefix}_{m.name}": m.result() for m in self.metrics}
 
         if self.is_standalone:
             return keras_metrics
@@ -104,8 +105,9 @@ class HistogramWrapper(BaseWrapper):
 
         return y_hat, bias
 
+
 class HistogramLayer(tf.keras.layers.Layer):
-    """A custom layer that tracks the distribution of feature values during training. 
+    """A custom layer that tracks the distribution of feature values during training.
     Outputs the probability of a sample given this feature distribution at inferenfce time.
     """
 

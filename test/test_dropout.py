@@ -4,9 +4,15 @@ import tensorflow as tf
 from tensorflow import keras
 
 from capsa import DropoutWrapper
-from capsa.utils import get_user_model, plot_loss, get_preds_names, \
-    plot_risk_2d, plot_epistemic_2d
+from capsa.utils import (
+    get_user_model,
+    plot_loss,
+    get_preds_names,
+    plot_risk_2d,
+    plot_epistemic_2d,
+)
 from data import get_data_v2
+
 
 def test_regression():
 
@@ -27,5 +33,6 @@ def test_regression():
 
     plot_risk_2d(x_val, y_val, y_hat, risk, preds_names[0])
     # plot_epistemic_2d(x, y, x_val, y_val, y_hat, risk)
+
 
 test_regression()

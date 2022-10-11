@@ -44,7 +44,7 @@ def test_exceptions(use_case):
             history = model.fit(x, y, epochs=100)
 
         except AssertionError:
-            print(f'test_exceptions_{use_case} worked!')
+            print(f"test_exceptions_{use_case} worked!")
 
     elif use_case == 2:
 
@@ -58,7 +58,7 @@ def test_exceptions(use_case):
                     return self.config
 
                 def call(self, x):
-                    return x ** 2
+                    return x**2
 
             their_model = SquareNums()
 
@@ -70,4 +70,4 @@ def test_exceptions(use_case):
             history = model.fit(x, y, epochs=100)
 
         except Exception:
-            print(f'test_exceptions_{use_case} worked!')
+            print(f"test_exceptions_{use_case} worked!")

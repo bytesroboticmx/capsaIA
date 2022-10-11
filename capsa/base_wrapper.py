@@ -3,6 +3,7 @@ from tensorflow import keras
 
 from .utils import _get_out_dim, copy_layer
 
+
 class BaseWrapper(keras.Model):
     """Base class for a metric wrapper, all of our individual metric wrappers
     (``MVEWrapper``, ``HistogramWrapper``, ``DropoutWrapper``, etc.) subclass it.
@@ -15,7 +16,7 @@ class BaseWrapper(keras.Model):
 
     Transforms a model, into a risk-aware variant. Wrappers are given an arbitrary neural
     network and, while preserving the structure and function of the network, add and modify
-    the relevant components of the model in order to be a drop-in replacement while being 
+    the relevant components of the model in order to be a drop-in replacement while being
     able to estimate the risk metric.
 
     In order to wrap an arbitrary neural network model, there are few distinct steps that
@@ -28,7 +29,7 @@ class BaseWrapper(keras.Model):
 
     def __init__(self, base_model, is_standalone):
         """
-        We add a few instance variables in the ``init`` of the base class to make it 
+        We add a few instance variables in the ``init`` of the base class to make it
         available by default to the metric wrappers that subclass it.
 
         Parameters
@@ -42,9 +43,9 @@ class BaseWrapper(keras.Model):
         ----------
         feature_extractor : tf.keras.Model
             Creates a ``feature_extractor`` if the metric wrapper will be used outside
-            of the ControllerWrapper (``is_standalone`` evaluates to True), otherwise 
+            of the ControllerWrapper (``is_standalone`` evaluates to True), otherwise
             expects extracted features to be passed in ``train_step`` (in this case,
-            the ControllerWrapper  will create a shared ``feature_extractor`` and pass 
+            the ControllerWrapper  will create a shared ``feature_extractor`` and pass
             the extracted features).
         out_layer : tf.keras.layers.Layer
             A duplicate of the last layer of the base_model which is used to predict ``y_hat``
@@ -84,7 +85,7 @@ class BaseWrapper(keras.Model):
             Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
             such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
             Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
-            not to be confused with what we call "metric wrappers". Prefix will be passed to 
+            not to be confused with what we call "metric wrappers". Prefix will be passed to
             the ``train_step`` if the metric wrapper is used inside the ``ControllerWrapper``,
             otherwise evaluates to ``None``.
 
@@ -102,7 +103,9 @@ class BaseWrapper(keras.Model):
 
         with tf.GradientTape() as t:
             metric_loss, y_hat = self.loss_fn(x, y, features)
-            compiled_loss = self.compiled_loss(y, y_hat, regularization_losses=self.losses)
+            compiled_loss = self.compiled_loss(
+                y, y_hat, regularization_losses=self.losses
+            )
             loss = metric_loss + compiled_loss
 
         trainable_vars = self.trainable_variables
@@ -111,7 +114,7 @@ class BaseWrapper(keras.Model):
 
         self.compiled_metrics.update_state(y, y_hat)
         prefix = self.metric_name if prefix is None else prefix
-        keras_metrics = {f'{prefix}_{m.name}': m.result() for m in self.metrics}
+        keras_metrics = {f"{prefix}_{m.name}": m.result() for m in self.metrics}
 
         if self.is_standalone:
             return keras_metrics
