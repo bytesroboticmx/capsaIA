@@ -81,7 +81,7 @@ class DropoutWrapper(BaseWrapper):
         y_hat : tf.Tensor
             Predicted label.
         """
-        y_hat = self.new_model(x, training=True)
+        y_hat = self(x, training=True, return_risk=False)
         return 0, y_hat
 
     def call(self, x, training=False, return_risk=True, T=20):
@@ -110,13 +110,13 @@ class DropoutWrapper(BaseWrapper):
             Epistemic uncertainty estimate.
         """
         if not return_risk:
-            y_hat = self.new_model(x, training=training)
+            y_hat = self.new_model(x, training)
             return y_hat
         else:
             outs = []
             for _ in range(T):
                 # we need training=True so that dropout is applied
-                outs.append(self.new_model(x, training=True))
+                outs.append(self.new_model(x, True))
             outs = tf.stack(outs)  # (T, N, 1)
             return tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
 
