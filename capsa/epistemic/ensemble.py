@@ -208,8 +208,10 @@ class EnsembleWrapper(BaseWrapper):
         risk : tf.Tensor
             Epistemic uncertainty estimate.
         """
+        T = 1 if return_risk is False else self.num_members
+
         outs = []
-        for wrapper in self.metrics_compiled.values():
+        for wrapper in list(self.metrics_compiled.values())[:T]:
             # ensembling the user model
             if self.metric_wrapper is None:
                 out = wrapper(x)
@@ -218,12 +220,15 @@ class EnsembleWrapper(BaseWrapper):
                 out = wrapper(x, training, return_risk, features)
             outs.append(out)
 
-        outs = tf.stack(outs)
-        # ensembling the user model
-        if self.metric_wrapper is None:
-            return tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
-        # ensembling one of our own metrics
+        if not return_risk:
+            return out
         else:
-            y_hats = outs[:, 0]  #  (n_members, 2, N, 1) -> (n_members, N, 1)
-            risks = outs[:, 1]  #  (n_members, 2, N, 1) -> (n_members, N, 1)
-            return tf.reduce_mean(y_hats, 0), tf.math.reduce_mean(risks, 0)
+            outs = tf.stack(outs)
+            # ensembling the user model
+            if self.metric_wrapper is None:
+                return tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
+            # ensembling one of our own metrics
+            else:
+                y_hats = outs[:, 0]  #  (n_members, 2, N, 1) -> (n_members, N, 1)
+                risks = outs[:, 1]  #  (n_members, 2, N, 1) -> (n_members, N, 1)
+                return tf.reduce_mean(y_hats, 0), tf.math.reduce_mean(risks, 0)
