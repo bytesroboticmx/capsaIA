@@ -37,6 +37,13 @@ class VAEWrapper(BaseWrapper):
     standard unit diagonal gaussian. In other words, the encoder doesn't output a full covariance
     matrix over all dimensions (doesn't output a high dim Gaussian).
 
+    NOTE: in the VAEWrapper we bottleneck the representation inside the model,
+    reconstruct the input from that low dimensional representation, and use the MSE
+    between the input and its reconstruction as a measure of epistemic uncertainty.
+    However, if the input is already very low dimensional, it's unreasonable to
+    talk about bottlenecking this representation even further -- thus it doesn't
+    make sense to use the VAEWrapper with e.g. 1-dim inputs.
+
     Example usage outside of the ``ControllerWrapper`` (standalone):
         >>> # initialize a keras model
         >>> user_model = Unet()
@@ -192,7 +199,7 @@ class VAEWrapper(BaseWrapper):
             # deterministic
             if T == 1 and not training:
                 rec = self.decoder(mu)
-                return y_hat, rec_loss(y_hat, x, reduce=False)
+                return y_hat, rec_loss(x, rec, reduce=False)
 
             # stochastic
             else:

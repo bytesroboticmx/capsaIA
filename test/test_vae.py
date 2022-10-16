@@ -15,6 +15,9 @@ from data import get_data_v2
 
 def test_vae(use_case):
 
+    # NOTE: the code below is intended to demonstrate how could the VAEWrapper
+    # be initialized and used to wrap a user model. In practice, this wrapper
+    # should not be used with 1-dim inputs (see VAEWrapper's documentation).
     user_model = get_user_model()
     ds_train, ds_val, x, y, x_val, y_val = get_data_v2(batch_size=256, is_show=False)
 
