@@ -142,25 +142,28 @@ def binary_elementwise_api_handler(api_func, x, y):
     return _RiskTensor(api_func(x.y_hat, y), zeros, zeros, zeros)
 
 
-@tf.experimental.dispatch_for_api(tf.math.reduce_all)
-def risk_reduce_all(input_tensor: _RiskTensor, axis=None, keepdims=False):
-    is_aleatoric = not isinstance(input_tensor.aleatoric, NoneType)
-    is_epistemic = not isinstance(input_tensor.epistemic, NoneType)
-    is_bias = not isinstance(input_tensor.bias, NoneType)
-    return RiskTensor(
-        tf.math.reduce_all(input_tensor.y_hat, axis),
-        tf.math.reduce_all(input_tensor.aleatoric, axis) if is_aleatoric else None,
-        tf.math.reduce_all(input_tensor.epistemic, axis) if is_epistemic else None,
-        tf.math.reduce_all(input_tensor.bias, axis) if is_bias else None,
-    )
+def _is_risk(risk_tens):
+    risk_tens = risk_tens[0] if isinstance(risk_tens, List) else risk_tens
+    is_aleatoric = not isinstance(risk_tens.aleatoric, NoneType)
+    is_epistemic = not isinstance(risk_tens.epistemic, NoneType)
+    is_bias = not isinstance(risk_tens.bias, NoneType)
+    return is_aleatoric, is_epistemic, is_bias
+
+
+# @tf.experimental.dispatch_for_api(tf.math.reduce_all)
+# def risk_reduce_all(input_tensor: _RiskTensor, axis=None, keepdims=False):
+#     is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
+#     return RiskTensor(
+#         tf.math.reduce_all(input_tensor.y_hat, axis),
+#         tf.math.reduce_all(input_tensor.aleatoric, axis) if is_aleatoric else None,
+#         tf.math.reduce_all(input_tensor.epistemic, axis) if is_epistemic else None,
+#         tf.math.reduce_all(input_tensor.bias, axis) if is_bias else None,
+#     )
 
 
 @tf.experimental.dispatch_for_api(tf.math.reduce_std)
 def risk_reduce_std(input_tensor: _RiskTensor, axis=None, keepdims=False):
-    is_aleatoric = not isinstance(input_tensor.aleatoric, NoneType)
-    is_epistemic = not isinstance(input_tensor.epistemic, NoneType)
-    is_bias = not isinstance(input_tensor.bias, NoneType)
-
+    is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
     return RiskTensor(
         tf.math.reduce_std(input_tensor.y_hat, axis),
         tf.math.reduce_std(input_tensor.aleatoric, axis) if is_aleatoric else None,
@@ -171,9 +174,7 @@ def risk_reduce_std(input_tensor: _RiskTensor, axis=None, keepdims=False):
 
 @tf.experimental.dispatch_for_api(tf.math.reduce_mean)
 def risk_reduce_mean(input_tensor: _RiskTensor, axis=None, keepdims=False):
-    is_aleatoric = not isinstance(input_tensor.aleatoric, NoneType)
-    is_epistemic = not isinstance(input_tensor.epistemic, NoneType)
-    is_bias = not isinstance(input_tensor.bias, NoneType)
+    is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
     return RiskTensor(
         tf.math.reduce_mean(input_tensor.y_hat, axis),
         tf.math.reduce_mean(input_tensor.aleatoric, axis) if is_aleatoric else None,
@@ -183,10 +184,8 @@ def risk_reduce_mean(input_tensor: _RiskTensor, axis=None, keepdims=False):
 
 
 @tf.experimental.dispatch_for_api(tf.stack)
-def risk_stack(values: List[Union[_RiskTensor, tf.Tensor]], axis=0):
-    is_aleatoric = False if values[0].aleatoric is None else True
-    is_epistemic = False if values[0].epistemic is None else True
-    is_bias = False if values[0].bias is None else True
+def risk_stack(values: List[_RiskTensor], axis=0):
+    is_aleatoric, is_epistemic, is_bias = _is_risk(values)
     return RiskTensor(
         tf.stack([v.y_hat for v in values], axis),
         tf.stack([v.aleatoric for v in values], axis) if is_aleatoric else None,
@@ -196,10 +195,8 @@ def risk_stack(values: List[Union[_RiskTensor, tf.Tensor]], axis=0):
 
 
 @tf.experimental.dispatch_for_api(tf.concat)
-def risk_concat(values: List[Union[_RiskTensor, _RiskTensor]], axis=0):
-    is_aleatoric = False if values[0].aleatoric is None else True
-    is_epistemic = False if values[0].epistemic is None else True
-    is_bias = False if values[0].bias is None else True
+def risk_concat(values: List[_RiskTensor], axis):
+    is_aleatoric, is_epistemic, is_bias = _is_risk(values)
     return RiskTensor(
         tf.concat([v.y_hat for v in values], axis),
         tf.concat([v.aleatoric for v in values], axis) if is_aleatoric else None,
