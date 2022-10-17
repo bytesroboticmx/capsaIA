@@ -30,10 +30,9 @@ def test_vae(use_case):
         )
 
         history = model.fit(ds_train, epochs=30)
-        preds_names = get_preds_names(history)
         plot_loss(history)
 
-        y_hat, risk = model(x_val)
+        risk_tensor = model(x_val)
 
     ### use case 2 - user can interact with a MetricWrapper through Wrapper (what we call a 'controller wrapper')
     elif use_case == 2:
@@ -45,14 +44,14 @@ def test_vae(use_case):
         )
 
         history = model.fit(ds_train, epochs=30)
-        preds_names = get_preds_names(history)
         plot_loss(history)
 
         metrics_out = model(x_val)
-        y_hat, risk = metrics_out["vae"]
+        risk_tensor = metrics_out["vae"]
 
-    plot_risk_2d(x_val, y_val, y_hat, risk, preds_names[0])
-    # plot_epistemic_2d(x, y, x_val, y_val, y_hat, risk)
+    preds_names = get_preds_names(history)
+    plot_risk_2d(x_val, y_val, risk_tensor, preds_names[0])
+    # plot_epistemic_2d(x, y, x_val, y_val, risk_tensor)
 
 
 test_vae(1)

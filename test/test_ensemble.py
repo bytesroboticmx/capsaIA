@@ -35,18 +35,8 @@ def test_ensemble(use_case):
         history = model.fit(x, y, epochs=30)
         plot_loss(history)
 
-        y_hat, risk = model(x_val)
-        plot_risk_2d(x_val, y_val, y_hat, risk, model.metric_name)
-
-        # outs = model(x_val)
-        # preds_names = get_preds_names(history)
-
-        # plt.plot(x_val, y_val, 'r-', label='ground truth')
-        # plt.scatter(x, y, label='train data')
-        # for i, out in enumerate(outs):
-        #     plt.plot(x_val, out, label=preds_names[i])
-        # plt.legend(loc='upper left')
-        # plt.show()
+        risk_tensor = model(x_val)
+        plot_risk_2d(x_val, y_val, risk_tensor, model.metric_name)
 
     elif use_case == 2:
 
@@ -60,15 +50,20 @@ def test_ensemble(use_case):
         history = model.fit(ds_train, epochs=30)
         plot_loss(history)
 
-        y_hat, risk = model(x_val)
-        plot_risk_2d(x_val, y_val, y_hat, risk, model.metric_name)
+        risk_tensor = model(x_val)
+        plot_risk_2d(x_val, y_val, risk_tensor, model.metric_name)
 
     # elif use_case == 3:
 
     #     model = ControllerWrapper(
     #         user_model,
     #         metrics=[
-    #             EnsembleWrapper(user_model, is_standalone=False, metric_wrapper=MVEWrapper, num_members=5),
+    #             EnsembleWrapper(
+    #                 user_model,
+    #                 is_standalone=False,
+    #                 metric_wrapper=MVEWrapper,
+    #                 num_members=5,
+    #             ),
     #         ],
     #     )
 
@@ -81,8 +76,8 @@ def test_ensemble(use_case):
     #     plot_loss(history)
 
     #     metrics_out = model(x_val)
-    #     y_hat, risk = metrics_out['ensemble']
-    #     plot_risk_2d(x_val, y_val, y_hat, risk, 'ensemble')
+    #     risk_tensor = metrics_out["ensemble"]
+    #     plot_risk_2d(x_val, y_val, risk_tensor, model.metric_name)
 
     #     # _, epistemic = metrics_out['VAEWrapper']
     #     # epistemic_normalized = (epistemic - np.min(epistemic)) / (np.max(epistemic) - np.min(epistemic))
@@ -112,11 +107,11 @@ def test_ensemble(use_case):
 
         metrics_out = model(x_val)
 
-        vae_y_hat, vae_risk = metrics_out["vae"]
-        plot_risk_2d(x_val, y_val, vae_y_hat, vae_risk, "vae")
+        vae_risk_tensor = metrics_out["vae"]
+        plot_risk_2d(x_val, y_val, vae_risk_tensor, "vae")
 
-        mve_y_hat, mve_risk = metrics_out["ensemble"]
-        plot_risk_2d(x_val, y_val, mve_y_hat, mve_risk, "ensemble of mve")
+        mve_risk_tensor = metrics_out["ensemble"]
+        plot_risk_2d(x_val, y_val, mve_risk_tensor, "ensemble of mve")
 
 
 test_ensemble(1)

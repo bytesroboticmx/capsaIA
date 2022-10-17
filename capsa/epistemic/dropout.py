@@ -12,6 +12,7 @@ from keras.layers import (
 )
 
 from ..base_wrapper import BaseWrapper
+from ..risk_tensor import RiskTensor
 
 
 class DropoutWrapper(BaseWrapper):
@@ -55,7 +56,7 @@ class DropoutWrapper(BaseWrapper):
         """
         super(DropoutWrapper, self).__init__(base_model, is_standalone)
 
-        self.metric_name = "DropoutWrapper"
+        self.metric_name = "dropout"
         self.is_standalone = is_standalone
         self.new_model = add_dropout(base_model, p)
 
@@ -81,8 +82,7 @@ class DropoutWrapper(BaseWrapper):
         y_hat : tf.Tensor
             Predicted label.
         """
-        y_hat = self(x, training=True, return_risk=False)
-        return 0, y_hat
+        return 0, self(x, training=True, return_risk=False).y_hat
 
     def call(self, x, training=False, return_risk=True, T=20):
         """
@@ -111,14 +111,16 @@ class DropoutWrapper(BaseWrapper):
         """
         if not return_risk:
             y_hat = self.new_model(x, training)
-            return y_hat
+            return RiskTensor(y_hat)
         else:
+            # user model
             outs = []
             for _ in range(T):
                 # we need training=True so that dropout is applied
                 outs.append(self.new_model(x, True))
             outs = tf.stack(outs)  # (T, N, 1)
-            return tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
+            mean, std = tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)  # (N, 1)x2
+            return RiskTensor(mean, epistemic=std)
 
 
 def add_dropout(model, p):

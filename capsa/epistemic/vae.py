@@ -6,6 +6,7 @@ from keras import layers
 
 from ..utils import copy_layer, _get_out_dim
 from ..base_wrapper import BaseWrapper
+from ..risk_tensor import RiskTensor
 
 
 def kl_loss(mu, log_std):
@@ -16,7 +17,11 @@ def kl_loss(mu, log_std):
 
 
 def rec_loss(x, rec, reduce=True):
-    loss = tf.reduce_sum(tf.math.square(x - rec), axis=-1)
+    loss = tf.reduce_sum(
+        tf.math.square(x - rec),
+        axis=-1,
+        keepdims=(False if reduce else True),
+    )
     return tf.reduce_mean(loss) if reduce else loss
 
 
@@ -187,23 +192,25 @@ class VAEWrapper(BaseWrapper):
             Epistemic uncertainty estimate.
         """
         if self.is_standalone:
-            features = self.feature_extractor(x, training=training)
-        y_hat = self.out_layer(features, training=training)
+            features = self.feature_extractor(x, training)
+        y_hat = self.out_layer(features)
 
         if not return_risk:
-            return y_hat
+            return RiskTensor(y_hat)
         else:
-            mu = self.mean_layer(features, training=training)
-            log_std = self.log_std_layer(features, training=training)
+            mu = self.mean_layer(features)
+            log_std = self.log_std_layer(features)
 
             # deterministic
             if T == 1 and not training:
-                rec = self.decoder(mu)
-                return y_hat, rec_loss(x, rec, reduce=False)
+                rec = self.decoder(mu, training)
+                epistemic = rec_loss(x, rec, reduce=False)
+                return RiskTensor(y_hat, epistemic=epistemic)
 
             # stochastic
             else:
                 if training:
+                    # used in loss_fn
                     sampled_latent = self.sampling(mu, log_std)
                     rec = self.decoder(sampled_latent)
                     return y_hat, rec, mu, log_std
@@ -212,13 +219,14 @@ class VAEWrapper(BaseWrapper):
                     for _ in T:
                         sampled_latent = self.sampling(mu, log_std)
                         recs.append(self.decoder(sampled_latent))
-                    return y_hat, tf.reduce_std(recs)
+                    std = tf.reduce_std(recs)
+                    return RiskTensor(y_hat, epistemic=std)
 
-    def input_to_histogram(self, x, training=None, features=None):
+    def input_to_histogram(self, x, training=False, features=None):
         # needed to interface with the Histogram metric
         if self.is_standalone:
-            features = self.feature_extractor(x, training=training)
-        mu = self.mean_layer(features, training=training)
+            features = self.feature_extractor(x, training)
+        mu = self.mean_layer(features)
         return mu
 
 
