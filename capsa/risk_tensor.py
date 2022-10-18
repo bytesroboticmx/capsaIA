@@ -45,12 +45,10 @@ class _RiskTensor(tf.experimental.BatchableExtensionType):
         >>> print(output.epistemic) #  to return a tf.Tensor of the epistemic uncertainty
     """
 
-    # https://www.tensorflow.org/guide/extension_type#overriding_the_default_constructor
     y_hat: tf.Tensor
     aleatoric: Union[tf.Tensor, None]
     epistemic: Union[tf.Tensor, None]
     bias: Union[tf.Tensor, None]
-    # __batch_encoder__ = CustomBatchEncoder()
 
     # use y_hat's shape and dtype when checking these params on the RiskTensor
     shape = property(lambda self: self.y_hat.shape)  # TensorShape
@@ -68,36 +66,14 @@ class _RiskTensor(tf.experimental.BatchableExtensionType):
     # Overriding the default printable representation
     # You can override this default string conversion operator for extension types. The following example updates the MaskedTensor class to generate a more readable string representation when values are printed in Eager mode.
     def __repr__(self):
-        return self._risk_tensor_str()
-
-    def _risk_tensor_str(self):
         # if hasattr(self.y_hat, "numpy"):
         #     y_hat = " ".join(str(self.y_hat.numpy()).split())
-        # if hasattr(self.aleatoric, "numpy"):
-        #     aleatoric = " ".join(str(self.aleatoric.numpy()).split())
-        #     epistemic = " ".join(str(self.epistemic.numpy()).split())
-        #     bias = " ".join(str(self.bias.numpy()).split())
-        # return (
-        #     f"<RiskTensor: y_hat shape={self.y_hat.shape} y_hat={y_hat} "
-        #     f"aleatoric={aleatoric} "
-        #     f"epistemic={epistemic} "
-        #     f"bias={bias}>"
-        # )
-
         risk_str = ""
         risk_str += "aleatoric, " if self.aleatoric != None else ""
         risk_str += "epistemic, " if self.epistemic != None else ""
         risk_str += "bias, " if self.bias != None else ""
-        risk_str = risk_str if risk_str != "" else None
-        return f"RiskTensor: shape={self.shape}, dtype={self.dtype.name}, risk=({risk_str})"  # y_hat.numpy()
-
-    # d = property(lambda self: {'aleatoric': self.aleatoric, 'epistemic':self.epistemic, 'bias':self.bias})
-    # def _risk_tensor_str(self):
-    #     risk_str = ''
-    #     for k,v in self.d.items():
-    #         risk_str += k if v != None else ''
-    #     risk_str = risk_str if risk_str != '' else None
-    #     return f"RiskTensor: shape={self.shape}, dtype={self.dtype.name}, risk=({risk_str})" # y_hat.numpy()
+        risk_str = risk_str.rstrip() if risk_str != "" else None
+        return f"<RiskTensor: shape={self.shape}, dtype={self.dtype.name}, risk=({risk_str})>"
 
 
 def RiskTensor(y_hat, aleatoric=None, epistemic=None, bias=None):
