@@ -104,10 +104,9 @@ class DropoutWrapper(BaseWrapper):
 
         Returns
         -------
-        y_hat : tf.Tensor
-            Predicted label
-        risk : tf.Tensor.
-            Epistemic uncertainty estimate.
+        out : capsa.RiskTensor
+            Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the epistemic
+            uncertainty estimate (tf.Tensor).
         """
         if not return_risk:
             y_hat = self.new_model(x, training)

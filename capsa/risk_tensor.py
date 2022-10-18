@@ -6,66 +6,97 @@ NoneType = type(None)
 
 
 class _RiskTensor(tf.experimental.BatchableExtensionType):
-    """We  create a new type of tensor class (which inherits from tf.Tensor). The output of every wrapper is now a RiskTensor
-    A RiskTensor contains both y_hat and all other risk measures inside of it (and can be accessed through some methods). For example:
+    """Extends the interface defined by the ``tf.Tensor`` type (tensor-like extension type
+    see `tf.extension_type <https://www.tensorflow.org/guide/extension_type>`_ for more details).
 
-    The default behaviour of this obejct should look like y_hat, if user tires to add it to another tensor or multiply it or feed it to another model for example.
-    But it would hold risk attributes within it as well.
+    An instance of this class contains both ``y_hat`` and the risk
+    measures inside of it (which can be accessed). The output of
+    every wrapper is a ``RiskTensor``.
 
-    We use tf.experimental.ExtensionType to achieve this, see https://www.tensorflow.org/guide/extension_type.
-    Extension type could be "Tensor-like type", which specialize or extend the concept of "Tensor." Types in this category have a rank, a shape, and usually a dtype; and it makes sense to use them with Tensor operations (such as tf.stack, tf.add, or tf.matmul). MaskedTensor and CSRSparseMatrix are examples of tensor-like types.
-    Extension types can be "tensor-like", in the sense that they specialize or extend the interface defined by the tf.Tensor type.
+    The default behavior of this object mimics one of a regular ``tf.Tensor``:
+        - has a ``shape``, and a ``dtype``;
+        - could be used with Tensor operations (such as ``tf.stack``, ``tf.concat``,
+          ``tf.shape``, ``tf.add``, ``tf.matmul``, ``tf.math.reduce_std``, ``tf.math.reduce_mean``, etc.);
+        - could be used as input/output for ``tf.keras.Model`` and ``tf.keras.layers``;
+        - could be used with ``tf.data.Dataset``;
+        - `etc <https://www.tensorflow.org/guide/extension_type#supported_apis>`_.
 
-    Keras: Extension types can be used as inputs and outputs for Keras Models and Layers, etc.
+    Note: Not all `tf operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_api>`_.
+    are currently supported to work natively with an instance of the ``RiskTensor``. The ones that are currently
+    supported are: (i) all `unary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_unary_elementwise_apis>`_;
+    (ii) the following `binary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_
+    ``tf.stack``, ``tf.concat``, ``tf.shape``, ``tf.add``, ``tf.matmul``, ``tf.math.reduce_std``,
+    ``tf.math.reduce_mean``. When working with ``RiskTensor``, if you encounter the following error
+    ``ValueError: Attempt to convert a value (RiskTensor: ...) with an unsupported type (<class
+    'capsa.risk_tensor.RiskTensor'>) to a Tensor.`` most likely the tensorflow framework under the hood
+    tries to use one of the `tf operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_api>`_
+    which is not currently supported -- thus you may need to override the default behavior of the specified tf
+    operation when it is called. You can use the ``@tf.experimental.dispatch_for_api`` decorator to specify
+    how a not yet supported operation (e.g., ``tf.math.reduce_max()``) should process ``RiskTensor`` values.
+    For more examples see ``capsa/risk_tensor.py``.
 
-    None: if this err than implement an op: ValueError: Attempt to convert a value (RiskTensor: ...) with an unsupported type (<class 'capsa.risk_tensor._RiskTensor'>) to a Tensor.
+    Note: ``RiskTensor`` currently does not support operator overloading. Thus e.g. ``risk_tensor1 + risk_tensor2``
+    will throw an error, use ``tf.add(risk_tensor1, risk_tensor2)`` instead. For more examples see
+    ``test/test_risk_tensor.py``.
 
-    Note: does not support operator overloading
-
-    Note: immutable -- https://www.tensorflow.org/guide/extension_type#mutability
-    ExtensionType overrides the __setattr__ and __delattr__ methods to prevent mutation, ensuring that extension type values are immutable.
-
-    # Constructor takes one parameter for each field.
-    # Fields are type-checked and converted to the declared types.
-    # For example, `mt.values` is converted to a Tensor.
-    # output = RiskTensor(y_hat, aleatoric, None, None)
-    output = RiskTensor(y_hat, None, None, None)
-    print(output)
+    Note: `tf.extension_type <https://www.tensorflow.org/guide/extension_type>`_ and therefore an instance of a
+    ``RiskTensor`` is `immutable <https://www.tensorflow.org/guide/extension_type#mutability>`_. Because
+    ``tf.ExtensionType`` overrides the ``__setattr__`` and ``__delattr__`` methods to prevent mutation.
 
     Example usage:
-        >>> # output should act like a real tensor if the user wants to use it like that since it inherits directly
-        >>> # from tf.Tensor. It should support all tensor operations (directly using y_hat)
-        >>> output = wrapper.call(x)   # type(output) == capsa.RiskTensor
+        >>> # initialize a keras model
+        >>> user_model = Unet()
+        >>> # wrap the model to transform it into a risk-aware variant (e.g. with the vae wrapper)
+        >>> model = VAEWrapper(user_model)
+        >>> # compile and fit as a regular keras model
+        >>> model.compile(...)
+        >>> model.fit(...)
+        >>>
+        >>> # output of a metric wrapper is a ``RiskTensor``. It acts like a regular
+        >>> # ``tf.Tensor`` -- as it was before a user wrapped their model with capsa
+        >>> output = model(x)   # type(output) == capsa.RiskTensor
+        >>> # in other words, using ``output`` feels the same as directly using ``y_hat``
         >>> real_tensor = tf.random.uniform(shape=output.shape)   # type(real_tensor) == tf.Tensor
-        >>> # should not throw an error and add y_hat from the wrapper with real_tensor.
-        >>> print(output + real_tensor)
-
-        >>> # we can additionally access risk measures as part of the RiskTensor if the user wants.
-        >>> # For example, I can think of two ways of doing this (perhaps there is an even better/cleaner way).
-        >>> print(output.epistemic) #  to return a tf.Tensor of the epistemic uncertainty
+        >>> tf.add(output, real_tensor)
+        >>>
+        >>> # but in addition to the model's prediction (y_hat) we can access risk measures as
+        >>> # part of the RiskTensor
+        >>> output.epistemic #  to return a tf.Tensor of the epistemic uncertainty
     """
+
+    # required for serialization in tf.saved_model
+    __name__ = "capsa.RiskTensor"
 
     y_hat: tf.Tensor
     aleatoric: Union[tf.Tensor, None]
     epistemic: Union[tf.Tensor, None]
     bias: Union[tf.Tensor, None]
 
-    # use y_hat's shape and dtype when checking these params on the RiskTensor
+    # use y_hat's shape and dtype when checking these params on an instance of the RiskTensor
     shape = property(lambda self: self.y_hat.shape)  # TensorShape
     dtype = property(lambda self: self.y_hat.dtype)
 
-    # Validation method
-    # ExtensionType adds a __validate__ method, which can be overridden to perform validation checks on fields. It is run after the constructor is called, and after fields have been type-checked and converted to their declared types, so it can assume that all fields have their declared types.
-    # The following example updates MaskedTensor to validate the shapes and dtypes of its fields:
-    #   def __validate__(self):
+    # def __validate__(self):
+    #     """
+    #     ExtensionType adds a validation method (__validate__), to perform validation checks on fields.
+    #     It is run after the constructor is called, and after fields have been type-checked and converted
+    #     to their declared types, so it can assume that all fields have their declared types.
+    #     We override this method to validate the shapes and dtypes of ``RiskTensor``'s fields.
+    #     """
     #     self.values.shape.assert_is_compatible_with(self.y_hat.shape)
-    #     assert self.y_hat.dtype.is_bool, 'mask.dtype must be bool'
+    #     assert self.y_hat.dtype.is_bool, "mask.dtype must be bool"
 
-    # Printable representation
-    # ExtensionType adds a default printable representation method (__repr__) that includes the class name and the value for each field:
-    # Overriding the default printable representation
-    # You can override this default string conversion operator for extension types. The following example updates the MaskedTensor class to generate a more readable string representation when values are printed in Eager mode.
     def __repr__(self):
+        """
+        ExtensionType adds a default printable representation method (__repr__). We override
+        this default string conversion operator to generate a more readable string representation
+        when values are printed.
+
+        Returns
+        -------
+        risk_str : str
+            Printable representation of an object.
+        """
         # if hasattr(self.y_hat, "numpy"):
         #     y_hat = " ".join(str(self.y_hat.numpy()).split())
         risk_str = ""
@@ -77,27 +108,45 @@ class _RiskTensor(tf.experimental.BatchableExtensionType):
 
 
 def RiskTensor(y_hat, aleatoric=None, epistemic=None, bias=None):
-    # when initializing _RiskTensor, risk measurments should be a tensor
+    # when initializing _RiskTensor, risk measurements should be a tensor
     return _RiskTensor(y_hat, aleatoric, epistemic, bias)
 
 
-# dispatch
-# https://www.tensorflow.org/guide/extension_type#dispatch_for_all_unary_elementwise_apis
-# https://www.tensorflow.org/guide/extension_type#dispatch_for_binary_all_elementwise_apis
-# NOTE: the operation is performerd on y_hat only!
 @tf.experimental.dispatch_for_unary_elementwise_apis(_RiskTensor)
 def unary_elementwise_op_handler(op, x):
+    """
+    NOTE: By design the `unary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_unary_elementwise_apis>`_
+    are performed on ``y_hat`` only. E.g. ``tf.abs(output)`` will only take the absolute values of the
+    ``y_hat`` tensor, leaving the risk tensors untouched.
+
+    The reasoning behind such a design choice is to protect a user from accidentally modifying the
+    contents of a risk tensors when the user intends to treat outputs of a metric wrapper as ``y_hat``.
+
+    Thus, you need to explicitly select other elements to perform uniary operations on them e.g.
+    ``tf.abs(output.epistemic)`` to select absolute values of the epistemic tensor.
+
+    For more details see `dispatch for all unary elementwise APIs <https://www.tensorflow.org/guide/extension_type#dispatch_for_all_unary_elementwise_apis>`_.
+    """
     return _RiskTensor(op(x.y_hat), x.aleatoric, x.epistemic, x.bias)
 
 
-# The operation is performerd on both the y_hat and all of the risk eliments!
-# But, on one hand for the summation with the real tensor
-# on the other hand what to do if the real tens does not have the risk eliments
-#   The decorated function (known as the "elementwise api handler") overrides the default implementation for any binary elementwise API,
-#   **whenever the value for the first two arguments (typically named x and y) match the specified type annotations.** https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis
-#   So, write one for any possible combination
 @tf.experimental.dispatch_for_binary_elementwise_apis(_RiskTensor, _RiskTensor)
 def binary_elementwise_api_handler(api_func, x, y):
+    """
+    NOTE: By design the `binary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_
+    are performed on ``y_hat`` only. E.g. ``tf.math.subtract(output1, output2)`` will only subtract the
+    ``y_hat`` tensors, leaving the risk tensors untouched.
+
+    The reasoning behind such a design choice is to protect a user from accidentally modifying the
+    contents of a risk tensors when the user intends to treat outputs of a metric wrapper as ``y_hat``.
+
+    Thus, you need to explicitly select other elements to perform binary operations on them e.g.
+    ``tf.math.subtract(output1.epistemic, output2.epistemic)`` to subtract values of the epistemic tensors.
+
+    The decorated function (known as the "elementals api handler") overrides the default implementation for any binary elementals API,
+    whenever the value for the first two arguments (typically named x and y) match the specified type annotations.
+    For more details see `dispatch for binary elementwise APIs <https://www.tensorflow.org/guide/extension_type#dispatch_for_binary_all_elementwise_apis>`_.
+    """
     return _RiskTensor(
         api_func(x.y_hat, y.y_hat),
         api_func(x.aleatoric, y.aleatoric),

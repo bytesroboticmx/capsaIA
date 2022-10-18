@@ -110,10 +110,9 @@ class MVEWrapper(BaseWrapper):
 
         Returns
         -------
-        y_hat : tf.Tensor
-            Predicted label.
-        var : tf.Tensor
-            Aleatoric uncertainty estimate.
+        out : capsa.RiskTensor
+            Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the aleatoric
+            uncertainty estimate (tf.Tensor).
         """
         if self.is_standalone:
             features = self.feature_extractor(x, training)

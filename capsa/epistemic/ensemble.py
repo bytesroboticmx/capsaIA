@@ -205,10 +205,9 @@ class EnsembleWrapper(BaseWrapper):
 
         Returns
         -------
-        y_hat : tf.Tensor
-            Predicted label.
-        risk : tf.Tensor
-            Epistemic uncertainty estimate.
+        out : capsa.RiskTensor
+            Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the epistemic
+            uncertainty estimate (tf.Tensor).
         """
         T = 1 if return_risk is False else self.num_members
 

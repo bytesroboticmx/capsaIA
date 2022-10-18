@@ -8,6 +8,7 @@ API Documentation
 
     ControllerWrapper
     BaseWrapper
+    RiskTensor
 
     MVEWrapper
 
