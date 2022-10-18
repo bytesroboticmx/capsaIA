@@ -5,7 +5,7 @@ import tensorflow as tf
 NoneType = type(None)
 
 
-class _RiskTensor(tf.experimental.BatchableExtensionType):
+class RiskTensor(tf.experimental.BatchableExtensionType):
     """Extends the interface defined by the ``tf.Tensor`` type (tensor-like extension type
     see `tf.extension_type <https://www.tensorflow.org/guide/extension_type>`_ for more details).
 
@@ -68,9 +68,9 @@ class _RiskTensor(tf.experimental.BatchableExtensionType):
     __name__ = "capsa.RiskTensor"
 
     y_hat: tf.Tensor
-    aleatoric: Union[tf.Tensor, None]
-    epistemic: Union[tf.Tensor, None]
-    bias: Union[tf.Tensor, None]
+    aleatoric: Union[tf.Tensor, None] = None
+    epistemic: Union[tf.Tensor, None] = None
+    bias: Union[tf.Tensor, None] = None
 
     # use y_hat's shape and dtype when checking these params on an instance of the RiskTensor
     shape = property(lambda self: self.y_hat.shape)  # TensorShape
@@ -107,12 +107,7 @@ class _RiskTensor(tf.experimental.BatchableExtensionType):
         return f"<RiskTensor: shape={self.shape}, dtype={self.dtype.name}, risk=({risk_str})>"
 
 
-def RiskTensor(y_hat, aleatoric=None, epistemic=None, bias=None):
-    # when initializing _RiskTensor, risk measurements should be a tensor
-    return _RiskTensor(y_hat, aleatoric, epistemic, bias)
-
-
-@tf.experimental.dispatch_for_unary_elementwise_apis(_RiskTensor)
+@tf.experimental.dispatch_for_unary_elementwise_apis(RiskTensor)
 def unary_elementwise_op_handler(op, x):
     """
     NOTE: By design the `unary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_unary_elementwise_apis>`_
@@ -127,10 +122,10 @@ def unary_elementwise_op_handler(op, x):
 
     For more details see `dispatch for all unary elementwise APIs <https://www.tensorflow.org/guide/extension_type#dispatch_for_all_unary_elementwise_apis>`_.
     """
-    return _RiskTensor(op(x.y_hat), x.aleatoric, x.epistemic, x.bias)
+    return RiskTensor(op(x.y_hat), x.aleatoric, x.epistemic, x.bias)
 
 
-@tf.experimental.dispatch_for_binary_elementwise_apis(_RiskTensor, _RiskTensor)
+@tf.experimental.dispatch_for_binary_elementwise_apis(RiskTensor, RiskTensor)
 def binary_elementwise_api_handler(api_func, x, y):
     """
     NOTE: By design the `binary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_
@@ -147,7 +142,7 @@ def binary_elementwise_api_handler(api_func, x, y):
     whenever the value for the first two arguments (typically named x and y) match the specified type annotations.
     For more details see `dispatch for binary elementwise APIs <https://www.tensorflow.org/guide/extension_type#dispatch_for_binary_all_elementwise_apis>`_.
     """
-    return _RiskTensor(
+    return RiskTensor(
         api_func(x.y_hat, y.y_hat),
         api_func(x.aleatoric, y.aleatoric),
         api_func(x.epistemic, y.epistemic),
@@ -155,16 +150,16 @@ def binary_elementwise_api_handler(api_func, x, y):
     )
 
 
-@tf.experimental.dispatch_for_binary_elementwise_apis(tf.Tensor, _RiskTensor)
+@tf.experimental.dispatch_for_binary_elementwise_apis(tf.Tensor, RiskTensor)
 def binary_elementwise_api_handler(api_func, x, y):
     zeros = tf.zeros_like(x)
-    return _RiskTensor(api_func(x, y.y_hat), zeros, zeros, zeros)
+    return RiskTensor(api_func(x, y.y_hat), zeros, zeros, zeros)
 
 
-@tf.experimental.dispatch_for_binary_elementwise_apis(_RiskTensor, tf.Tensor)
+@tf.experimental.dispatch_for_binary_elementwise_apis(RiskTensor, tf.Tensor)
 def binary_elementwise_api_handler(api_func, x, y):
     zeros = tf.zeros_like(y)
-    return _RiskTensor(api_func(x.y_hat, y), zeros, zeros, zeros)
+    return RiskTensor(api_func(x.y_hat, y), zeros, zeros, zeros)
 
 
 def _is_risk(risk_tens):
@@ -176,7 +171,7 @@ def _is_risk(risk_tens):
 
 
 # @tf.experimental.dispatch_for_api(tf.math.reduce_all)
-# def risk_reduce_all(input_tensor: _RiskTensor, axis=None, keepdims=False):
+# def risk_reduce_all(input_tensor: RiskTensor, axis=None, keepdims=False):
 #     is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
 #     return RiskTensor(
 #         tf.math.reduce_all(input_tensor.y_hat, axis),
@@ -187,7 +182,7 @@ def _is_risk(risk_tens):
 
 
 @tf.experimental.dispatch_for_api(tf.math.reduce_std)
-def risk_reduce_std(input_tensor: _RiskTensor, axis=None, keepdims=False):
+def risk_reduce_std(input_tensor: RiskTensor, axis=None, keepdims=False):
     is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
     return RiskTensor(
         tf.math.reduce_std(input_tensor.y_hat, axis),
@@ -198,7 +193,7 @@ def risk_reduce_std(input_tensor: _RiskTensor, axis=None, keepdims=False):
 
 
 @tf.experimental.dispatch_for_api(tf.math.reduce_mean)
-def risk_reduce_mean(input_tensor: _RiskTensor, axis=None, keepdims=False):
+def risk_reduce_mean(input_tensor: RiskTensor, axis=None, keepdims=False):
     is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
     return RiskTensor(
         tf.math.reduce_mean(input_tensor.y_hat, axis),
@@ -209,7 +204,7 @@ def risk_reduce_mean(input_tensor: _RiskTensor, axis=None, keepdims=False):
 
 
 @tf.experimental.dispatch_for_api(tf.stack)
-def risk_stack(values: List[_RiskTensor], axis=0):
+def risk_stack(values: List[RiskTensor], axis=0):
     is_aleatoric, is_epistemic, is_bias = _is_risk(values)
     return RiskTensor(
         tf.stack([v.y_hat for v in values], axis),
@@ -220,7 +215,7 @@ def risk_stack(values: List[_RiskTensor], axis=0):
 
 
 @tf.experimental.dispatch_for_api(tf.concat)
-def risk_concat(values: List[_RiskTensor], axis):
+def risk_concat(values: List[RiskTensor], axis):
     is_aleatoric, is_epistemic, is_bias = _is_risk(values)
     return RiskTensor(
         tf.concat([v.y_hat for v in values], axis),
@@ -231,5 +226,5 @@ def risk_concat(values: List[_RiskTensor], axis):
 
 
 @tf.experimental.dispatch_for_api(tf.shape)
-def risk_shape(input: _RiskTensor, out_type=tf.int32):
+def risk_shape(input: RiskTensor, out_type=tf.int32):
     return tf.shape(input.y_hat, out_type)
