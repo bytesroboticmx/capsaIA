@@ -39,10 +39,6 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     will throw an error, use ``tf.add(risk_tensor1, risk_tensor2)`` instead. For more examples see
     ``test/test_risk_tensor.py``.
 
-    Note: `tf.extension_type <https://www.tensorflow.org/guide/extension_type>`_ and therefore an instance of a
-    ``RiskTensor`` is `immutable <https://www.tensorflow.org/guide/extension_type#mutability>`_. Because
-    ``tf.ExtensionType`` overrides the ``__setattr__`` and ``__delattr__`` methods to prevent mutation.
-
     Example usage:
         >>> # initialize a keras model
         >>> user_model = Unet()
@@ -105,6 +101,19 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         risk_str += "bias, " if self.bias != None else ""
         risk_str = risk_str.rstrip() if risk_str != "" else None
         return f"<RiskTensor: shape={self.shape}, dtype={self.dtype.name}, risk=({risk_str})>"
+
+    def replace_risk(self, new_aleatoric=None, new_epistemic=None, new_bias=None):
+        """
+        Note: `tf.extension_type <https://www.tensorflow.org/guide/extension_type>`_ and therefore an instance of a
+        ``RiskTensor`` is `immutable <https://www.tensorflow.org/guide/extension_type#mutability>`_. Because
+        ``tf.ExtensionType`` overrides the ``__setattr__`` and ``__delattr__`` methods to prevent mutation.
+        This ensures that they can be properly tracked by TensorFlow's graph-tracing mechanisms.
+
+        If you find yourself wanting to mutate an extension type value, consider instead using this method that
+        transforms values. For example, rather than defining a ``set_risk`` method to mutate a ``RiskTensor``,
+        you could use the ``replace_risk`` method that returns a new ``RiskTensor``.
+        """
+        return RiskTensor(self.y_hat, new_aleatoric, new_epistemic, new_bias)
 
 
 @tf.experimental.dispatch_for_unary_elementwise_apis(RiskTensor)

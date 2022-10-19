@@ -31,6 +31,13 @@ print(
     real_tensor,
 )
 
+# replace risk
+epistemic = np.random.randn(3, 1).astype("float32")
+print(
+    "\noutput.replace_risk(new_epistemic=epistemic)\n >>>",
+    output.replace_risk(new_epistemic=epistemic),
+)
+
 #### dispatch unary & binary ####
 # see https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_unary_elementwise_apis
 # see https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis
