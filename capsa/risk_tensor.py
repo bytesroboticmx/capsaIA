@@ -130,21 +130,22 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
 
 
 def _is_risk(risk_tens):
-    risk_tens = risk_tens[0] if isinstance(risk_tens, List) else risk_tens
     is_aleatoric = not isinstance(risk_tens.aleatoric, NoneType)
     is_epistemic = not isinstance(risk_tens.epistemic, NoneType)
     is_bias = not isinstance(risk_tens.bias, NoneType)
     return is_aleatoric, is_epistemic, is_bias
 
 
-def _both_are_risk(x, y):
-    x_is_aleatoric, x_is_epistemic, x_is_bias = _is_risk(x)
-    y_is_aleatoric, y_is_epistemic, y_is_bias = _is_risk(y)
+def _are_all_risk(list_risk_tens):
+    is_aleatoric, is_epistemic, is_bias = True, True, True
 
-    both_are_aleatoric = x_is_aleatoric and y_is_aleatoric
-    both_are_epistemic = x_is_epistemic and y_is_epistemic
-    both_are_bias = x_is_bias and y_is_bias
-    return both_are_aleatoric, both_are_epistemic, both_are_bias
+    for risk_tens in list_risk_tens:
+        temp_is_aleatoric, temp_is_epistemic, temp_is_bias = _is_risk(risk_tens)
+        is_aleatoric &= temp_is_aleatoric
+        is_epistemic &= temp_is_epistemic
+        is_bias &= temp_is_bias
+
+    return is_aleatoric, is_epistemic, is_bias
 
 
 ##########################
@@ -191,13 +192,13 @@ def binary_elementwise_api_handler_1(api_func, x, y):
     simply calling ``tf.math.subtract(output1, output2)`` will subtract all elements of the risk tensors.
     """
     # print("capsa.RiskTensor and capsa.RiskTensor")
-    both_are_aleatoric, both_are_epistemic, both_are_bias = _both_are_risk(x, y)
+    are_both_aleatoric, are_both_epistemic, are_both_bias = _are_all_risk([x, y])
 
     return RiskTensor(
         api_func(x.y_hat, y.y_hat),
-        api_func(x.aleatoric, y.aleatoric) if both_are_aleatoric else None,
-        api_func(x.epistemic, y.epistemic) if both_are_epistemic else None,
-        api_func(x.bias, y.bias) if both_are_bias else None,
+        api_func(x.aleatoric, y.aleatoric) if are_both_aleatoric else None,
+        api_func(x.epistemic, y.epistemic) if are_both_epistemic else None,
+        api_func(x.bias, y.bias) if are_both_bias else None,
     )
 
 
@@ -269,24 +270,34 @@ def risk_reduce_mean(input_tensor: RiskTensor, axis=None, keepdims=False):
 @tf.experimental.dispatch_for_api(tf.stack)
 def risk_stack(values: List[RiskTensor], axis=0):
     """Overrides ``tf.stack`` to support ``RiskTensor``."""
-    is_aleatoric, is_epistemic, is_bias = _is_risk(values)
+
+    # loop over the RiskTensors passed to tf.stack, if any one of them
+    # doesn't have e.g. aleatoric risk estimate do not stack aleatoric risks
+    # (even if the other tensors passed to tf.stack do have risk estimate of this type)
+    are_all_aleatoric, are_all_epistemic, are_all_bias = _are_all_risk(values)
+
     return RiskTensor(
         tf.stack([v.y_hat for v in values], axis),
-        tf.stack([v.aleatoric for v in values], axis) if is_aleatoric else None,
-        tf.stack([v.epistemic for v in values], axis) if is_epistemic else None,
-        tf.stack([v.bias for v in values], axis) if is_bias else None,
+        tf.stack([v.aleatoric for v in values], axis) if are_all_aleatoric else None,
+        tf.stack([v.epistemic for v in values], axis) if are_all_epistemic else None,
+        tf.stack([v.bias for v in values], axis) if are_all_bias else None,
     )
 
 
 @tf.experimental.dispatch_for_api(tf.concat)
 def risk_concat(values: List[RiskTensor], axis):
     """Overrides ``tf.concat`` to support ``RiskTensor``."""
-    is_aleatoric, is_epistemic, is_bias = _is_risk(values)
+
+    # loop over the RiskTensors passed to tf.concat, if any one of them
+    # doesn't have e.g. aleatoric risk estimate do not concat aleatoric risks
+    # (even if the other tensors passed to tf.concat do have risk estimate of this type)
+    are_all_aleatoric, are_all_epistemic, are_all_bias = _are_all_risk(values)
+
     return RiskTensor(
         tf.concat([v.y_hat for v in values], axis),
-        tf.concat([v.aleatoric for v in values], axis) if is_aleatoric else None,
-        tf.concat([v.epistemic for v in values], axis) if is_epistemic else None,
-        tf.concat([v.bias for v in values], axis) if is_bias else None,
+        tf.concat([v.aleatoric for v in values], axis) if are_all_aleatoric else None,
+        tf.concat([v.epistemic for v in values], axis) if are_all_epistemic else None,
+        tf.concat([v.bias for v in values], axis) if are_all_bias else None,
     )
 
 

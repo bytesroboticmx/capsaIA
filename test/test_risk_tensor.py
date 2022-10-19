@@ -114,8 +114,8 @@ output2_none = RiskTensor(y_hat, None, None, None)
 # we've overwritten tf.stack to work with capsa.RiskTensor
 print("\ntf.stack([output1, output2])\n >>>", tf.stack([output1, output2]))
 print(
-    "\ntf.stack([output1_none, output2_none])\n >>>",
-    tf.stack([output1_none, output2_none]),
+    "\ntf.stack([output1, output2_none])\n >>>",
+    tf.stack([output1, output2_none]),
 )
 
 # we've overwritten tf.concat to work with capsa.RiskTensor
@@ -129,6 +129,10 @@ print(
 print(
     "\ntf.concat([output1_none, output2_none], axis=0)\n >>>",
     tf.concat([output1_none, output2_none], axis=0),
+)
+print(
+    "\ntf.concat([output, output_none], axis=1)\n >>>",
+    tf.concat([output, output_none], axis=1),
 )
 
 ### batchable
