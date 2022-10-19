@@ -72,15 +72,22 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     shape = property(lambda self: self.y_hat.shape)  # TensorShape
     dtype = property(lambda self: self.y_hat.dtype)
 
-    # def __validate__(self):
-    #     """
-    #     ExtensionType adds a validation method (__validate__), to perform validation checks on fields.
-    #     It is run after the constructor is called, and after fields have been type-checked and converted
-    #     to their declared types, so it can assume that all fields have their declared types.
-    #     We override this method to validate the shapes and dtypes of ``RiskTensor``'s fields.
-    #     """
-    #     self.values.shape.assert_is_compatible_with(self.y_hat.shape)
-    #     assert self.y_hat.dtype.is_bool, "mask.dtype must be bool"
+    def __validate__(self):
+        """
+        ExtensionType adds a validation method (``__validate__``), to perform validation checks on fields.
+        It is run after the constructor is called, and after fields have been type-checked and converted
+        to their declared types, so it can assume that all fields have their declared types.
+
+        We override this method to validate the shapes and dtypes of ``RiskTensor``'s fields.
+        This method asserts that if a risk estimate is provided (e.g. if aleatoric is not None),
+        the shape of this aleatoric tensor should match the shape of y_hat.
+        """
+        if not isinstance(self.aleatoric, NoneType):
+            self.shape.assert_is_compatible_with(self.aleatoric.shape)
+        if not isinstance(self.epistemic, NoneType):
+            self.shape.assert_is_compatible_with(self.epistemic.shape)
+        if not isinstance(self.bias, NoneType):
+            self.shape.assert_is_compatible_with(self.bias.shape)
 
     def __repr__(self):
         """
