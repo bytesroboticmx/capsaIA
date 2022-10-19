@@ -8,6 +8,9 @@ aleatoric = np.random.randn(3, 1).astype("float32")
 epistemic = np.random.randn(3, 1).astype("float32")
 bias = np.random.randn(3, 1).astype("float32")
 
+output = RiskTensor(y_hat, aleatoric, epistemic, bias)
+output_none = RiskTensor(y_hat, None, None, None)
+
 # basic interface and shapes
 print("\n#### basic interface and shapes ####\n")
 
@@ -18,7 +21,6 @@ print(
 )
 
 # risk
-output = RiskTensor(y_hat, aleatoric, epistemic, bias)
 print(
     "\nRiskTensor(y_hat, aleatoric, epistemic, bias).epistemic\n >>>",
     RiskTensor(y_hat, aleatoric, epistemic, bias).epistemic,
@@ -48,13 +50,16 @@ print("output.epistemic\n >>>", output.epistemic)
 print("\ntf.abs(output).epistemic\n >>>", tf.abs(output).epistemic)
 
 # binary -- use case 1, capsa.RiskTensor and capsa.RiskTensor
-print("\ntf.add(output, output).epistemic\n >>>", tf.add(output, output).epistemic)
+print("\ntf.add(output, output)\n >>>", tf.add(output, output))
 
-# binary -- use case 2, capsa.RiskTensor and tf.Tensor
+# binary -- use case 2, capsa.RiskTensor and capsa.RiskTensor (has None)
+print("\ntf.add(output, output_none)\n >>>", tf.add(output, output_none))
+
+# binary -- use case 3, capsa.RiskTensor and tf.Tensor
 print("\ntf.add(output, real_tensor)\n >>>", tf.add(output, real_tensor))
 
-# binary -- use case 3, tf.Tensor and capsa.RiskTensor
-print("\ntf.add(real_tensor, output).y_hat\n >>>", tf.add(real_tensor, output).y_hat)
+# binary -- use case 4, tf.Tensor and capsa.RiskTensor
+print("\ntf.add(real_tensor, output)\n >>>", tf.add(real_tensor, output))
 
 # binary operator overloading
 try:

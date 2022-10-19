@@ -16,17 +16,18 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     The default behavior of this object mimics one of a regular ``tf.Tensor``:
         - has a ``shape``, and a ``dtype``;
         - could be used with Tensor operations (such as ``tf.stack``, ``tf.concat``,
-          ``tf.shape``, ``tf.add``, ``tf.matmul``, ``tf.math.reduce_std``, ``tf.math.reduce_mean``, etc.);
+          ``tf.shape``, ``tf.add``, ``tf.math.reduce_std``, ``tf.math.reduce_mean``, etc.);
         - could be used as input/output for ``tf.keras.Model`` and ``tf.keras.layers``;
         - could be used with ``tf.data.Dataset``;
         - `etc <https://www.tensorflow.org/guide/extension_type#supported_apis>`_.
 
     Note: Not all `tf operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_api>`_.
     are currently supported to work natively with an instance of the ``RiskTensor``. The ones that are currently
-    supported are: (i) all `unary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_unary_elementwise_apis>`_;
-    (ii) the following `binary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_
-    ``tf.stack``, ``tf.concat``, ``tf.shape``, ``tf.add``, ``tf.matmul``, ``tf.math.reduce_std``,
-    ``tf.math.reduce_mean``. When working with ``RiskTensor``, if you encounter the following error
+    supported are: (i) all `unary elementwise operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_unary_elementwise_apis>`_;
+    (ii) all `binary elementwise operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_;
+    (iii) the following `operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_api>`_
+    ``tf.math.reduce_std``, ``tf.math.reduce_mean``, ``tf.stack``, ``tf.concat``, ``tf.shape``.
+    When working with ``RiskTensor``, if you encounter the following error
     ``ValueError: Attempt to convert a value (RiskTensor: ...) with an unsupported type (<class
     'capsa.risk_tensor.RiskTensor'>) to a Tensor.`` most likely the tensorflow framework under the hood
     tries to use one of the `tf operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_api>`_
@@ -123,6 +124,35 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         return RiskTensor(self.y_hat, new_aleatoric, new_epistemic, new_bias)
 
 
+#######################
+# convenience functions
+#######################
+
+
+def _is_risk(risk_tens):
+    risk_tens = risk_tens[0] if isinstance(risk_tens, List) else risk_tens
+    is_aleatoric = not isinstance(risk_tens.aleatoric, NoneType)
+    is_epistemic = not isinstance(risk_tens.epistemic, NoneType)
+    is_bias = not isinstance(risk_tens.bias, NoneType)
+    return is_aleatoric, is_epistemic, is_bias
+
+
+def _both_are_risk(x, y):
+    x_is_aleatoric, x_is_epistemic, x_is_bias = _is_risk(x)
+    y_is_aleatoric, y_is_epistemic, y_is_bias = _is_risk(y)
+
+    both_are_aleatoric = x_is_aleatoric and y_is_aleatoric
+    both_are_epistemic = x_is_epistemic and y_is_epistemic
+    both_are_bias = x_is_bias and y_is_bias
+    return both_are_aleatoric, both_are_epistemic, both_are_bias
+
+
+##########################
+# dispatch for unary and
+# binary element wise apis
+##########################
+
+
 @tf.experimental.dispatch_for_unary_elementwise_apis(RiskTensor)
 def unary_elementwise_op_handler(op, x):
     """
@@ -142,49 +172,62 @@ def unary_elementwise_op_handler(op, x):
 
 
 @tf.experimental.dispatch_for_binary_elementwise_apis(RiskTensor, RiskTensor)
-def binary_elementwise_api_handler(api_func, x, y):
+def binary_elementwise_api_handler_1(api_func, x, y):
     """
-    NOTE: By design the `binary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_
-    are performed on ``y_hat`` only. E.g. ``tf.math.subtract(output1, output2)`` will only subtract the
-    ``y_hat`` tensors, leaving the risk tensors untouched.
-
-    The reasoning behind such a design choice is to protect a user from accidentally modifying the
-    contents of a risk tensors when the user intends to treat outputs of a metric wrapper as ``y_hat``.
-
-    Thus, you need to explicitly select other elements to perform binary operations on them e.g.
-    ``tf.math.subtract(output1.epistemic, output2.epistemic)`` to subtract values of the epistemic tensors.
-
     The decorated function (known as the "elementals api handler") overrides the default implementation for any binary elementals API,
     whenever the value for the first two arguments (typically named x and y) match the specified type annotations.
     For more details see `dispatch for binary elementwise APIs <https://www.tensorflow.org/guide/extension_type#dispatch_for_binary_all_elementwise_apis>`_.
+
+    NOTE: By design the `binary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_
+    for two ``RiskTensor``s are performed on ``y_hat`` tensors, as well as on the risk tensors (if both of them are not ``None``).
+
+    The reasoning behind such a design choice is that in this scenario when operations are performed on two
+    ``RiskTensor``s (not on a ``RiskTensor`` and a ``tf.Tensor``) there's no need to protect a user
+    from accidentally modifying their risk contents because both inputs of the binary operation have the same
+    type.
+
+    Thus, you don't need to explicitly select other elements to perform binary operations on them e.g.
+    ``tf.math.subtract(output1.epistemic, output2.epistemic)`` to subtract values of the epistemic tensors,
+    simply calling ``tf.math.subtract(output1, output2)`` will subtract all elements of the risk tensors.
     """
+    # print("capsa.RiskTensor and capsa.RiskTensor")
+    both_are_aleatoric, both_are_epistemic, both_are_bias = _both_are_risk(x, y)
+
     return RiskTensor(
         api_func(x.y_hat, y.y_hat),
-        api_func(x.aleatoric, y.aleatoric),
-        api_func(x.epistemic, y.epistemic),
-        api_func(x.bias, y.bias),
+        api_func(x.aleatoric, y.aleatoric) if both_are_aleatoric else None,
+        api_func(x.epistemic, y.epistemic) if both_are_epistemic else None,
+        api_func(x.bias, y.bias) if both_are_bias else None,
     )
 
 
 @tf.experimental.dispatch_for_binary_elementwise_apis(tf.Tensor, RiskTensor)
-def binary_elementwise_api_handler(api_func, x, y):
-    zeros = tf.zeros_like(x)
-    return RiskTensor(api_func(x, y.y_hat), zeros, zeros, zeros)
+def binary_elementwise_api_handler_2(api_func, x, y):
+    """
+    The decorated function (known as the "elementals api handler") overrides the default implementation for any binary elementals API,
+    whenever the value for the first two arguments (typically named x and y) match the specified type annotations.
+    For more details see `dispatch for binary elementwise APIs <https://www.tensorflow.org/guide/extension_type#dispatch_for_binary_all_elementwise_apis>`_.
+
+    NOTE: By design the `binary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_
+    for a ``tf.Tensor`` and a ``RiskTensor``s are performed on ``y_hat`` only.
+
+    The reasoning behind such a design choice is that the ``tf.Tensor`` simply doesn't have the
+    risk elements to perform the binary operation on.
+    """
+    # print("tf.Tensor and capsa.RiskTensor")
+    return RiskTensor(api_func(x, y.y_hat), None, None, None)
 
 
 @tf.experimental.dispatch_for_binary_elementwise_apis(RiskTensor, tf.Tensor)
-def binary_elementwise_api_handler(api_func, x, y):
-    zeros = tf.zeros_like(y)
-    return RiskTensor(api_func(x.y_hat, y), zeros, zeros, zeros)
+def binary_elementwise_api_handler_3(api_func, x, y):
+    """Same as ``binary_elementwise_api_handler_2`` but applied for a ``RiskTensor`` and a ``tf.tensor`` (different order)"""
+    # print("capsa.RiskTensor and tf.Tensor")
+    return RiskTensor(api_func(x.y_hat, y), None, None, None)
 
 
-def _is_risk(risk_tens):
-    risk_tens = risk_tens[0] if isinstance(risk_tens, List) else risk_tens
-    is_aleatoric = not isinstance(risk_tens.aleatoric, NoneType)
-    is_epistemic = not isinstance(risk_tens.epistemic, NoneType)
-    is_bias = not isinstance(risk_tens.bias, NoneType)
-    return is_aleatoric, is_epistemic, is_bias
-
+####################
+# dispatch for apis
+####################
 
 # @tf.experimental.dispatch_for_api(tf.math.reduce_all)
 # def risk_reduce_all(input_tensor: RiskTensor, axis=None, keepdims=False):
