@@ -21,7 +21,7 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         - could be used with ``tf.data.Dataset``;
         - `etc <https://www.tensorflow.org/guide/extension_type#supported_apis>`_.
 
-    Note: Not all `tf operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_api>`_.
+    Note: Not all `tf operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_api>`_
     are currently supported to work natively with an instance of the ``RiskTensor``. The ones that are currently
     supported are: (i) all `unary elementwise operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_unary_elementwise_apis>`_;
     (ii) all `binary elementwise operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_;
@@ -92,7 +92,7 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
 
     def __repr__(self):
         """
-        ``ExtensionType`` adds a default printable representation method (``__repr__``). We override
+        ``tf.ExtensionType`` adds a default printable representation method (``__repr__``). We override
         this default string conversion operator to generate a more readable string representation
         when values are printed.
 
@@ -173,7 +173,7 @@ def unary_elementwise_op_handler(op, x):
 
 
 @tf.experimental.dispatch_for_binary_elementwise_apis(RiskTensor, RiskTensor)
-def binary_elementwise_api_handler_1(api_func, x, y):
+def binary_elementwise_api_handler_rt_rt(api_func, x, y):
     """
     The decorated function (known as the "elementals api handler") overrides the default implementation for any binary elementals API,
     whenever the value for the first two arguments (typically named ``x`` and ``y``) match the specified type annotations.
@@ -203,25 +203,25 @@ def binary_elementwise_api_handler_1(api_func, x, y):
 
 
 @tf.experimental.dispatch_for_binary_elementwise_apis(tf.Tensor, RiskTensor)
-def binary_elementwise_api_handler_2(api_func, x, y):
+def binary_elementwise_api_handler_t_rt(api_func, x, y):
     """
     The decorated function (known as the "elementals api handler") overrides the default implementation for any binary elementals API,
     whenever the value for the first two arguments (typically named ``x`` and ``y``) match the specified type annotations.
     For more details see `dispatch for binary elementwise APIs <https://www.tensorflow.org/guide/extension_type#dispatch_for_binary_all_elementwise_apis>`_.
 
     Note: By design the `binary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_
-    for a ``tf.Tensor`` and a ``RiskTensor``'s are performed on ``y_hat`` only.
+    for a ``tf.Tensor`` and a ``RiskTensor`` are performed on ``y_hat`` only.
 
     The reasoning behind such a design choice is that the ``tf.Tensor`` simply doesn't have the
-    risk elements to perform the binary operation on.
+    risk elements to perform a binary operation on.
     """
     # print("tf.Tensor and capsa.RiskTensor")
     return RiskTensor(api_func(x, y.y_hat), None, None, None)
 
 
 @tf.experimental.dispatch_for_binary_elementwise_apis(RiskTensor, tf.Tensor)
-def binary_elementwise_api_handler_3(api_func, x, y):
-    """Same as ``binary_elementwise_api_handler_2`` but applied for a ``RiskTensor`` and a ``tf.tensor`` (different order)."""
+def binary_elementwise_api_handler_rt_t(api_func, x, y):
+    """Same as ``binary_elementwise_api_handler_t_rt`` but applied for a ``RiskTensor`` and a ``tf.tensor`` (different order)."""
     # print("capsa.RiskTensor and tf.Tensor")
     return RiskTensor(api_func(x.y_hat, y), None, None, None)
 
@@ -233,7 +233,7 @@ def binary_elementwise_api_handler_3(api_func, x, y):
 
 # @tf.experimental.dispatch_for_api(tf.math.reduce_all)
 # def risk_reduce_all(input_tensor: RiskTensor, axis=None, keepdims=False):
-#     """Overrides ``tf.math.reduce_all`` to support ``RiskTensor``."""
+#     """Specifies how ``tf.math.reduce_all`` should process ``RiskTensor`` values."""
 #     is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
 #     return RiskTensor(
 #         tf.math.reduce_all(input_tensor.y_hat, axis),
@@ -245,7 +245,7 @@ def binary_elementwise_api_handler_3(api_func, x, y):
 
 @tf.experimental.dispatch_for_api(tf.math.reduce_std)
 def risk_reduce_std(input_tensor: RiskTensor, axis=None, keepdims=False):
-    """Overrides ``tf.math.reduce_std`` to support ``RiskTensor``."""
+    """Specifies how ``tf.math.reduce_std`` should process ``RiskTensor`` values."""
     is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
     return RiskTensor(
         tf.math.reduce_std(input_tensor.y_hat, axis),
@@ -257,7 +257,7 @@ def risk_reduce_std(input_tensor: RiskTensor, axis=None, keepdims=False):
 
 @tf.experimental.dispatch_for_api(tf.math.reduce_mean)
 def risk_reduce_mean(input_tensor: RiskTensor, axis=None, keepdims=False):
-    """Overrides ``tf.math.reduce_mean`` to support ``RiskTensor``."""
+    """Specifies how ``tf.math.reduce_mean`` should process ``RiskTensor`` values."""
     is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
     return RiskTensor(
         tf.math.reduce_mean(input_tensor.y_hat, axis),
@@ -269,7 +269,7 @@ def risk_reduce_mean(input_tensor: RiskTensor, axis=None, keepdims=False):
 
 @tf.experimental.dispatch_for_api(tf.stack)
 def risk_stack(values: List[RiskTensor], axis=0):
-    """Overrides ``tf.stack`` to support ``RiskTensor``."""
+    """Specifies how ``tf.stack`` should process ``RiskTensor`` values."""
 
     # loop over the RiskTensors passed to tf.stack, if any one of them
     # doesn't have e.g. aleatoric risk estimate do not stack aleatoric risks
@@ -286,7 +286,7 @@ def risk_stack(values: List[RiskTensor], axis=0):
 
 @tf.experimental.dispatch_for_api(tf.concat)
 def risk_concat(values: List[RiskTensor], axis):
-    """Overrides ``tf.concat`` to support ``RiskTensor``."""
+    """Specifies how ``tf.concat`` should process ``RiskTensor`` values."""
 
     # loop over the RiskTensors passed to tf.concat, if any one of them
     # doesn't have e.g. aleatoric risk estimate do not concat aleatoric risks
@@ -303,5 +303,5 @@ def risk_concat(values: List[RiskTensor], axis):
 
 @tf.experimental.dispatch_for_api(tf.shape)
 def risk_shape(input: RiskTensor, out_type=tf.int32):
-    """Overrides ``tf.shape`` to support ``RiskTensor``."""
+    """Specifies how ``tf.shape`` should process ``RiskTensor`` values."""
     return tf.shape(input.y_hat, out_type)

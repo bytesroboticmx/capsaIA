@@ -16,9 +16,9 @@ RiskTensor
 
 .. autofunction:: unary_elementwise_op_handler
 
-.. autofunction:: binary_elementwise_api_handler_1
-.. autofunction:: binary_elementwise_api_handler_2
-.. autofunction:: binary_elementwise_api_handler_3
+.. autofunction:: binary_elementwise_api_handler_rt_rt
+.. autofunction:: binary_elementwise_api_handler_t_rt
+.. autofunction:: binary_elementwise_api_handler_rt_t
 
 .. autofunction:: risk_reduce_std
 .. autofunction:: risk_reduce_mean
