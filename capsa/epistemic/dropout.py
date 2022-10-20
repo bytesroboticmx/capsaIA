@@ -82,7 +82,9 @@ class DropoutWrapper(BaseWrapper):
         y_hat : tf.Tensor
             Predicted label.
         """
-        return 0, self(x, training=True, return_risk=False).y_hat
+        y_hat = self(x, training=True, return_risk=False).y_hat
+        metric_loss = 0
+        return metric_loss, y_hat
 
     def call(self, x, training=False, return_risk=True, T=20):
         """
