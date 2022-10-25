@@ -321,7 +321,6 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         """
         return RiskTensor(self.y_hat, new_aleatoric, new_epistemic, new_bias)
 
-    @property
     def ndim(self):
         """
         Returns
@@ -331,7 +330,6 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         """
         return self.shape.ndims
 
-    @property
     def device(self):
         """
         Returns
