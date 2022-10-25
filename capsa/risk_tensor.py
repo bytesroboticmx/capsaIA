@@ -448,7 +448,10 @@ def unary_elementwise_op_handler(op, x):
     return RiskTensor(op(x.y_hat), x.aleatoric, x.epistemic, x.bias)
 
 
-@tf.experimental.dispatch_for_binary_elementwise_apis(RiskTensor, RiskTensor)
+@tf.experimental.dispatch_for_binary_elementwise_apis(
+    RiskTensor,
+    RiskTensor,
+)
 def binary_elementwise_api_handler_rt_rt(api_func, x, y):
     """
     The decorated function (known as the "elementals api handler") overrides the default implementation for any binary elementals API,
@@ -478,8 +481,11 @@ def binary_elementwise_api_handler_rt_rt(api_func, x, y):
     )
 
 
-@tf.experimental.dispatch_for_binary_elementwise_apis(tf.Tensor, RiskTensor)
-def binary_elementwise_api_handler_t_rt(api_func, x, y):
+@tf.experimental.dispatch_for_binary_elementwise_apis(
+    RiskTensor,
+    Union[tf.Tensor, np.ndarray, int, float],
+)
+def binary_elementwise_api_handler_rt_other(api_func, x, y):
     """
     The decorated function (known as the "elementals api handler") overrides the default implementation for any binary elementals API,
     whenever the value for the first two arguments (typically named ``x`` and ``y``) match the specified type annotations.
@@ -491,48 +497,24 @@ def binary_elementwise_api_handler_t_rt(api_func, x, y):
     The reasoning behind such a design choice is that the ``tf.Tensor`` simply doesn't have the
     risk elements to perform a binary operation on.
     """
-    # print("tf.Tensor and capsa.RiskTensor")
-    return RiskTensor(api_func(x, y.y_hat), None, None, None)
-
-
-@tf.experimental.dispatch_for_binary_elementwise_apis(RiskTensor, tf.Tensor)
-def binary_elementwise_api_handler_rt_t(api_func, x, y):
-    """Same as ``binary_elementwise_api_handler_t_rt`` but applied for a ``RiskTensor`` and a ``tf.tensor`` (different order)."""
-    # print("capsa.RiskTensor and tf.Tensor")
+    # print(f"{type(x), type(y)}")
     return RiskTensor(api_func(x.y_hat, y), None, None, None)
 
 
-@tf.experimental.dispatch_for_binary_elementwise_apis(Union[int, float], RiskTensor)
-def binary_elementwise_api_handler_pythonnumeric_rt(api_func, x, y):
-
-    # supposedly we don't need to convert as ops do it under the hood https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/math_ops.py#L3999-L4000
-    # however for the right case as I implement it does not hold true (since it only converts y)
-    # which caused this err https://github.com/tensorflow/tensorflow/issues/26766
-    # todo-high: use _right func instep, then it should work
-    # print("rt + 2", rt + 2) # works because under the hood converts second item to the dtype of the first
-    # print("2 + rt", 2 + rt, "\n") # fails because tries to under the hood AGAIN converts second item to the dtype of the first
+@tf.experimental.dispatch_for_binary_elementwise_apis(
+    Union[tf.Tensor, np.ndarray, int, float],
+    RiskTensor,
+)
+def binary_elementwise_api_handler_other_rt(api_func, x, y):
+    """Same as ``binary_elementwise_api_handler_rt_other`` but applied for a ``tf.Tensor`` and  a ``RiskTensor`` (different order)."""
+    # without ops.convert_to_tensor will give an err as under the hood only y gets converted to the x's dtype and not the other way around
+    # https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/math_ops.py#L3999-L4000
+    # todo-low: use _right func instep, then it should work
+    # >>> print("rt + 2", rt + 2) # works because under the hood converts second item to the dtype of the first
+    # >>> print("2 + rt", 2 + rt, "\n") # fails because under the hood AGAIN tires converts second item to the dtype of the first
+    # print(f"{type(x), type(y)}")
     x = ops.convert_to_tensor(x, dtype_hint=y.dtype.base_dtype)
-
-    # print("python numeric and capsa.RiskTensor")
     return RiskTensor(api_func(x, y.y_hat), None, None, None)
-
-
-@tf.experimental.dispatch_for_binary_elementwise_apis(RiskTensor, Union[int, float])
-def binary_elementwise_api_handler_rt_pythonnumeric(api_func, x, y):
-    # print("capsa.RiskTensor and python numeric")
-    return RiskTensor(api_func(x.y_hat, y), None, None, None)
-
-
-@tf.experimental.dispatch_for_binary_elementwise_apis(np.ndarray, RiskTensor)
-def binary_elementwise_api_handler_arr_rt(api_func, x, y):
-    # print("np.array and capsa.RiskTensor")
-    return RiskTensor(api_func(x, y.y_hat), None, None, None)
-
-
-@tf.experimental.dispatch_for_binary_elementwise_apis(RiskTensor, np.ndarray)
-def binary_elementwise_api_handler_rt_arr(api_func, x, y):
-    # print("capsa.RiskTensor and np.array")
-    return RiskTensor(api_func(x.y_hat, y), None, None, None)
 
 
 ####################
