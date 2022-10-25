@@ -667,3 +667,33 @@ def risk_add_n(inputs: List[RiskTensor], name=None):
 #         tf.debugging.assert_equal(x.epistemic, y.epistemic) if are_both_epistemic else None,
 #         tf.debugging.assert_equal(x.bias, y.bias) if are_both_bias else None,
 #     )
+
+# The dispatch decorators are used to override the default behavior of several TensorFlow APIs.
+# Since these APIs are used by standard Keras layers (such as the Dense layer), overriding these will
+# allow us to use those layers with RiskTensor. For the purposes of this example, matmul for risk
+# tensors is defined to treat the risk values as zeros (that is, to not include them in the product).
+@tf.experimental.dispatch_for_api(tf.matmul)
+def risk_matmul(
+    a: RiskTensor,
+    b,
+    transpose_a=False,
+    transpose_b=False,
+    adjoint_a=False,
+    adjoint_b=False,
+    a_is_sparse=False,
+    b_is_sparse=False,
+    output_type=None,
+):
+    a = a.y_hat
+    # note, returns just a.y_hat @ b, and not a RiskTensor
+    return tf.matmul(
+        a,
+        b,
+        transpose_a,
+        transpose_b,
+        adjoint_a,
+        adjoint_b,
+        a_is_sparse,
+        b_is_sparse,
+        output_type,
+    )
