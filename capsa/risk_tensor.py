@@ -522,6 +522,35 @@ def binary_elementwise_api_handler_other_rt(api_func, x, y):
 ####################
 
 
+### operate on one element
+
+
+@tf.experimental.dispatch_for_api(tf.shape)
+def risk_shape(input: RiskTensor, out_type=tf.int32):
+    """Specifies how ``tf.shape`` should process ``RiskTensor`` values."""
+    return tf.shape(input.y_hat, out_type)
+
+
+@tf.experimental.dispatch_for_api(tf.size)
+def risk_size(input: RiskTensor, out_type=tf.int32):
+    """Specifies how ``tf.size`` should process ``RiskTensor`` values."""
+    return tf.size(input.y_hat, out_type)
+
+
+@tf.experimental.dispatch_for_api(tf.convert_to_tensor)
+def risk_convert_to_tensor(value: RiskTensor, dtype=None, dtype_hint=None, name=None):
+    """Specifies how ``tf.convert_to_tensor`` should process ``RiskTensor`` values.
+
+    Since when initializing a risk tensor we already call ``tf.convert_to_tensor``
+    on every element of the tensor if running ``tf.convert_to_tensor`` on
+    a risk tensor no need convert again.
+    """
+    return value
+
+
+### operate on one risk tensor
+
+
 @tf.experimental.dispatch_for_api(tf.reshape)
 def risk_reshape(tensor: RiskTensor, shape, name=None):
     """Specifies how ``tf.reshape`` should process ``RiskTensor`` values."""
@@ -594,19 +623,7 @@ def risk_transpose(a: RiskTensor, perm=None, conjugate=False, name="transpose"):
     )
 
 
-# @tf.experimental.dispatch_for_api(tf.debugging.assert_equal)
-# def risk_assert_equal(
-#     x: RiskTensor, y: RiskTensor, message=None, summarize=None, name=None
-# ):
-#     # print("capsa.RiskTensor and capsa.RiskTensor")
-#     are_both_aleatoric, are_both_epistemic, are_both_bias = _are_all_risk([x, y])
-
-#     return RiskTensor(
-#         tf.debugging.assert_equal(x.y_hat, y.y_hat),
-#         tf.debugging.assert_equal(x.aleatoric, y.aleatoric) if are_both_aleatoric else None,
-#         tf.debugging.assert_equal(x.epistemic, y.epistemic) if are_both_epistemic else None,
-#         tf.debugging.assert_equal(x.bias, y.bias) if are_both_bias else None,
-#     )
+### operate on list of risk tensors
 
 
 @tf.experimental.dispatch_for_api(tf.stack)
@@ -660,24 +677,16 @@ def risk_add_n(inputs: List[RiskTensor]):
     )
 
 
-@tf.experimental.dispatch_for_api(tf.shape)
-def risk_shape(input: RiskTensor, out_type=tf.int32):
-    """Specifies how ``tf.shape`` should process ``RiskTensor`` values."""
-    return tf.shape(input.y_hat, out_type)
+# @tf.experimental.dispatch_for_api(tf.debugging.assert_equal)
+# def risk_assert_equal(
+#     x: RiskTensor, y: RiskTensor, message=None, summarize=None, name=None
+# ):
+#     # print("capsa.RiskTensor and capsa.RiskTensor")
+#     are_both_aleatoric, are_both_epistemic, are_both_bias = _are_all_risk([x, y])
 
-
-@tf.experimental.dispatch_for_api(tf.size)
-def risk_size(input: RiskTensor, out_type=tf.int32):
-    """Specifies how ``tf.size`` should process ``RiskTensor`` values."""
-    return tf.size(input.y_hat, out_type)
-
-
-@tf.experimental.dispatch_for_api(tf.convert_to_tensor)
-def risk_convert_to_tensor(value: RiskTensor, dtype=None, dtype_hint=None, name=None):
-    """Specifies how ``tf.convert_to_tensor`` should process ``RiskTensor`` values.
-
-    Since when initializing a risk tensor we already call ``tf.convert_to_tensor``
-    on every element of the tensor if running ``tf.convert_to_tensor`` on
-    a risk tensor no need convert again.
-    """
-    return value
+#     return RiskTensor(
+#         tf.debugging.assert_equal(x.y_hat, y.y_hat),
+#         tf.debugging.assert_equal(x.aleatoric, y.aleatoric) if are_both_aleatoric else None,
+#         tf.debugging.assert_equal(x.epistemic, y.epistemic) if are_both_epistemic else None,
+#         tf.debugging.assert_equal(x.bias, y.bias) if are_both_bias else None,
+#     )
