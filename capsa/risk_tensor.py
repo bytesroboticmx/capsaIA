@@ -159,103 +159,6 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         risk_str = risk_str.rstrip() if risk_str != "" else None
         return f"<RiskTensor: shape={self.shape}, dtype={self.dtype.name}, risk=({risk_str})>"
 
-    def replace_risk(self, new_aleatoric=None, new_epistemic=None, new_bias=None):
-        """
-        All ``tf.Tensors`` are immutable: you can never update the contents of a tensor, only
-        create a new one `reference <https://www.tensorflow.org/guide/tensor>`_.
-        Mutable objects may be backed by a Tensor which holds the unique handle that identifies
-        the mutable object `reference <https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/types/core.py#L46-L47>`_.
-        In other words, normal ``tf.Tensor`` objects are immutable. To store model weights (or other mutable
-        state) ``tf.Variable`` is used `reference <https://www.tensorflow.org/guide/basics#variables>`_.
-
-        Note: `tf.extension_type <https://www.tensorflow.org/guide/extension_type>`_ and therefore an instance of a
-        ``RiskTensor`` is `immutable <https://www.tensorflow.org/guide/extension_type#mutability>`_. Because
-        ``tf.ExtensionType`` overrides the ``__setattr__`` and ``__delattr__`` methods to prevent mutation.
-        This ensures that they can be properly tracked by TensorFlow's graph-tracing mechanisms.
-
-        If you find yourself wanting to mutate an extension type value, consider instead using this method that
-        transforms values. For example, rather than defining a ``set_risk`` method to mutate a ``RiskTensor``,
-        you could use the ``replace_risk`` method that returns a new ``RiskTensor``. This is similar to e.g.
-        `implementation <https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/framework/sparse_tensor.py#L177-L200>`_
-        of the ``tf.SparseTensor``.
-
-        Parameters
-        ----------
-        new_aleatoric : tf.Tensor, default None
-            New aleatoric estimate.
-        new_epistemic : tf.Tensor, default None
-            New epistemic estimate.
-        new_bias : tf.Tensor, default None
-            New bias estimate.
-
-        Returns
-        -------
-        out : capsa.RiskTensor
-            Updated risk aware tensor, contains old ``y_hat`` and new risk estimates.
-        """
-        return RiskTensor(self.y_hat, new_aleatoric, new_epistemic, new_bias)
-
-    # note on operator overloading:
-    #
-    # ``tf.RuggedTensor`` also
-    # 1. registers unary and binary API handlers for dispatch -- https://github.com/tensorflow/tensorflow/blob/2b7a2d357869264f5dab700af6e1ce95bbc28df6/tensorflow/python/ops/ragged/ragged_dispatch.py#L28-L78
-    # 2. registering dispatch handlers allows to use many standard TF ops without overriding each one of them
-    #    (e.g., we can use all binary ops since we've created binary_elementwise_api_handlers).
-    #       - just defines in a separate file https://github.com/tensorflow/tensorflow/blob/2b7a2d357869264f5dab700af6e1ce95bbc28df6/tensorflow/python/ops/ragged/ragged_operators.py
-    #       - uses them in the main class https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/ragged/ragged_tensor.py#L2169-L2215
-    #       - the elementwise ops https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/math_ops.py
-    #
-    # It appears that calling the individual ops like this (e.g. __add__ = tf.add(x, y))
-    # is equivalent to calling them through math ops (__add__ = math_ops.add).
-    # We follow RuggedTensor's implementation and use the latter way.
-    #
-    # For docs see this and all the ops below https://www.tensorflow.org/api_docs/python/tf/Tensor#__abs__.
-    # For the RiskTensor behavior is essentially the same but with the constraints imposed by our
-    # 'unary_elementwise_op_handler' and 'binary_elementwise_api_handler' (please see their docs),
-    # depending on whether or not an opp is binary or unary.
-
-    # Ordering operators
-    __ge__ = math_ops.greater_equal  # binary
-    __gt__ = math_ops.greater  # binary
-    __le__ = math_ops.less_equal  # binary
-    __lt__ = math_ops.less  # binary
-
-    # Logical operators
-    __invert__ = math_ops.logical_not  # unary
-    __and__ = math_ops.logical_and  # binary
-    __rand__ = _right(math_ops.logical_and)  # binary
-    __or__ = math_ops.logical_or  # binary
-    __ror__ = _right(math_ops.logical_or)  # binary
-    __xor__ = math_ops.logical_xor  # binary
-    __rxor__ = _right(math_ops.logical_xor)  # binary
-
-    # Arithmetic operators
-    __abs__ = math_ops.abs  # unary
-    __neg__ = math_ops.negative  # unary
-    __add__ = math_ops.add  # binary
-    __radd__ = _right(math_ops.add)  # binary
-    __floordiv__ = math_ops.floordiv  # binary
-    __rfloordiv__ = _right(math_ops.floordiv)  # binary
-    __mod__ = math_ops.floormod  # binary
-    __rmod__ = _right(math_ops.floormod)  # binary
-    __mul__ = math_ops.multiply  # binary
-    __rmul__ = _right(math_ops.multiply)  # binary
-    __pow__ = math_ops.pow  # binary
-    __rpow__ = _right(math_ops.pow)  # binary
-    __sub__ = math_ops.subtract  # binary
-    __rsub__ = _right(math_ops.subtract)  # binary
-    __truediv__ = math_ops.truediv  # binary
-    __rtruediv__ = _right(math_ops.truediv)  # binary
-    __matmul__ = math_ops.matmul
-    __rmatmul__ = _right(math_ops.matmul)
-
-    __bool__ = _dummy_bool
-    __nonzero__ = _dummy_bool
-
-    # Equality -- no need to override as tf.extension_type already provides those
-    # __eq__ = math_ops.tensor_equals
-    # __ne__ = math_ops.tensor_not_equals
-
     def __getitem__(self, slice_spec, var=None):
         """
         Overload for ``RiskTensor.getitem``. This operation extracts the specified region from the tensor.
@@ -320,6 +223,103 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
             The length of the first dimension of the ``y_hat`` Tensor.
         """
         return self.y_hat.__len__()
+
+    # note on operator overloading:
+    #
+    # ``tf.RuggedTensor`` also
+    # 1. registers unary and binary API handlers for dispatch -- https://github.com/tensorflow/tensorflow/blob/2b7a2d357869264f5dab700af6e1ce95bbc28df6/tensorflow/python/ops/ragged/ragged_dispatch.py#L28-L78
+    # 2. registering dispatch handlers allows to use many standard TF ops without overriding each one of them
+    #    (e.g., we can use all binary ops since we've created binary_elementwise_api_handlers).
+    #       - just defines in a separate file https://github.com/tensorflow/tensorflow/blob/2b7a2d357869264f5dab700af6e1ce95bbc28df6/tensorflow/python/ops/ragged/ragged_operators.py
+    #       - uses them in the main class https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/ragged/ragged_tensor.py#L2169-L2215
+    #       - the elementwise ops https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/math_ops.py
+    #
+    # It appears that calling the individual ops like this (e.g. __add__ = tf.add(x, y))
+    # is equivalent to calling them through math ops (__add__ = math_ops.add).
+    # We follow RuggedTensor's implementation and use the latter way.
+    #
+    # For docs see this and all the ops below https://www.tensorflow.org/api_docs/python/tf/Tensor#__abs__.
+    # For the RiskTensor behavior is essentially the same but with the constraints imposed by our
+    # 'unary_elementwise_op_handler' and 'binary_elementwise_api_handler' (please see their docs),
+    # depending on whether or not an opp is binary or unary.
+
+    # Ordering operators
+    __ge__ = math_ops.greater_equal  # binary
+    __gt__ = math_ops.greater  # binary
+    __le__ = math_ops.less_equal  # binary
+    __lt__ = math_ops.less  # binary
+
+    # Logical operators
+    __invert__ = math_ops.logical_not  # unary
+    __and__ = math_ops.logical_and  # binary
+    __rand__ = _right(math_ops.logical_and)  # binary
+    __or__ = math_ops.logical_or  # binary
+    __ror__ = _right(math_ops.logical_or)  # binary
+    __xor__ = math_ops.logical_xor  # binary
+    __rxor__ = _right(math_ops.logical_xor)  # binary
+
+    # Arithmetic operators
+    __abs__ = math_ops.abs  # unary
+    __neg__ = math_ops.negative  # unary
+    __add__ = math_ops.add  # binary
+    __radd__ = _right(math_ops.add)  # binary
+    __floordiv__ = math_ops.floordiv  # binary
+    __rfloordiv__ = _right(math_ops.floordiv)  # binary
+    __mod__ = math_ops.floormod  # binary
+    __rmod__ = _right(math_ops.floormod)  # binary
+    __mul__ = math_ops.multiply  # binary
+    __rmul__ = _right(math_ops.multiply)  # binary
+    __pow__ = math_ops.pow  # binary
+    __rpow__ = _right(math_ops.pow)  # binary
+    __sub__ = math_ops.subtract  # binary
+    __rsub__ = _right(math_ops.subtract)  # binary
+    __truediv__ = math_ops.truediv  # binary
+    __rtruediv__ = _right(math_ops.truediv)  # binary
+    __matmul__ = math_ops.matmul
+    __rmatmul__ = _right(math_ops.matmul)
+
+    __bool__ = _dummy_bool
+    __nonzero__ = _dummy_bool
+
+    # Equality -- no need to override as tf.extension_type already provides those
+    # __eq__ = math_ops.tensor_equals
+    # __ne__ = math_ops.tensor_not_equals
+
+    def replace_risk(self, new_aleatoric=None, new_epistemic=None, new_bias=None):
+        """
+        All ``tf.Tensors`` are immutable: you can never update the contents of a tensor, only
+        create a new one `reference <https://www.tensorflow.org/guide/tensor>`_.
+        Mutable objects may be backed by a Tensor which holds the unique handle that identifies
+        the mutable object `reference <https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/types/core.py#L46-L47>`_.
+        In other words, normal ``tf.Tensor`` objects are immutable. To store model weights (or other mutable
+        state) ``tf.Variable`` is used `reference <https://www.tensorflow.org/guide/basics#variables>`_.
+
+        Note: `tf.extension_type <https://www.tensorflow.org/guide/extension_type>`_ and therefore an instance of a
+        ``RiskTensor`` is `immutable <https://www.tensorflow.org/guide/extension_type#mutability>`_. Because
+        ``tf.ExtensionType`` overrides the ``__setattr__`` and ``__delattr__`` methods to prevent mutation.
+        This ensures that they can be properly tracked by TensorFlow's graph-tracing mechanisms.
+
+        If you find yourself wanting to mutate an extension type value, consider instead using this method that
+        transforms values. For example, rather than defining a ``set_risk`` method to mutate a ``RiskTensor``,
+        you could use the ``replace_risk`` method that returns a new ``RiskTensor``. This is similar to e.g.
+        `implementation <https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/framework/sparse_tensor.py#L177-L200>`_
+        of the ``tf.SparseTensor``.
+
+        Parameters
+        ----------
+        new_aleatoric : tf.Tensor, default None
+            New aleatoric estimate.
+        new_epistemic : tf.Tensor, default None
+            New epistemic estimate.
+        new_bias : tf.Tensor, default None
+            New bias estimate.
+
+        Returns
+        -------
+        out : capsa.RiskTensor
+            Updated risk aware tensor, contains old ``y_hat`` and new risk estimates.
+        """
+        return RiskTensor(self.y_hat, new_aleatoric, new_epistemic, new_bias)
 
     @property
     def ndim(self):
