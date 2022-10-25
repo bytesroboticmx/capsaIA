@@ -27,14 +27,14 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     measures inside of it (which can be accessed). The output of
     every wrapper is a ``RiskTensor``. We represent a risk tensor
     as four separate dense tensors: ``y_hat``, ``aleatoric``, ``epistemic``,
-    and ``bias`` (anyone of those could be ``None`` besides ``y_hat``).
-    In Python, the tensors are collected into a ``RiskTensor``
+    and ``bias`` (anyone of those could be ``None`` besides ``y_hat``),
+    these tensors are collected into a ``RiskTensor``
     class for ease of use.
 
     The default behavior of this object mimics one of a regular ``tf.Tensor``:
         - has a ``shape``, and a ``dtype``;
         - could be used with Tensor operations (such as ``tf.stack``, ``tf.concat``,
-          ``tf.shape``, ``tf.add``, ``tf.math.reduce_std``, ``tf.math.reduce_mean``, etc.);
+          ``tf.shape``, ``tf.add``, ``tf.math.reduce_std``, ``tf.reduce_mean``, etc.);
         - could be used as input/output for ``tf.keras.Model`` and ``tf.keras.layers``;
         - could be used with ``tf.data.Dataset``;
         - `etc <https://www.tensorflow.org/guide/extension_type#supported_apis>`_.
@@ -53,11 +53,11 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     tries to use one of the `tf operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_api>`_
     which is not currently supported -- thus you may need to override the default behavior of the specified tf
     operation when it is called. You can use the ``@tf.experimental.dispatch_for_api`` decorator to specify
-    how a not yet supported operation (e.g., ``tf.math.reduce_max()``) should process ``RiskTensor`` values.
+    how a not yet supported operation (e.g., ``tf.reduce_max()``) should process ``RiskTensor`` values.
     For more examples see ``capsa/risk_tensor.py``.
 
     Note: the ``RiskTensor`` class overloads the standard Python arithmetic and comparison operators, making it easy to perform basic math.
-    ``RiskTensors`` overload the same set of operators as ``tf.Tensors``: the unary operators ``-``, ``~``, and ``abs()``;
+    ``RiskTensor`` overloads the same set of operators as ``tf.Tensor``: the unary operators ``-``, ``~``, and ``abs()``;
     and the binary operators ``+``, ``-``, ``*``, ``/``, ``//``, ``%``, ``**``, ``&``, ``|``, ``^``, ``==``, ``<``, ``<=``, ``>``, and ``>=``.
     ``RiskTensor`` also supports Python-style indexing, including multidimensional indexing and slicing.
     For more examples see ``test/test_risk_tensor.py``.
@@ -76,7 +76,7 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         >>> output = model(x)   # type(output) == capsa.RiskTensor
         >>> # in other words, using ``output`` feels the same as directly using ``y_hat``
         >>> real_tensor = tf.random.uniform(shape=output.shape)   # type(real_tensor) == tf.Tensor
-        >>> tf.add(output, real_tensor)
+        >>> output + real_tensor
         >>>
         >>> # but in addition to the model's prediction (y_hat) we can access risk measures as
         >>> # part of the RiskTensor
@@ -85,6 +85,10 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
 
     # required for serialization in tf.saved_model
     __name__ = "capsa.RiskTensor"
+
+    # The default ExtensionTypeBatchEncoder that is used by BatchableExtensionType assumes
+    # and creates batchs of RiskTensor values by simply stacking individual risk tensors (y_hat, aleatoric,
+    # epistemic and bias).
 
     y_hat: tf.Tensor
     aleatoric: Union[tf.Tensor, None] = None
@@ -159,29 +163,24 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         risk_str = risk_str.rstrip() if risk_str != "" else None
         return f"<RiskTensor: shape={self.shape}, dtype={self.dtype.name}, risk=({risk_str})>"
 
-    def __getitem__(self, slice_spec, var=None):
+    def __getitem__(self, slice_spec):
         """
         Overload for ``RiskTensor.getitem``. This operation extracts the specified region from the tensor.
-        The notation is similar to tf.Tensor.
+        The notation is similar to ``tf.Tensor``.
 
         Note: applies to all elements of a ``RiskTensor`` (not only ``y_hat``) reasoning behind such a design
         choice is that in this scenario when a user extracts a slice from a given tensor there is no need
         to keep around elements of risk tensors that correspond to the elements of ``y_hat`` that do not
         exist anymore (after slicing). Thus no need to protect a user from accidentally modifying the contents
-        of a risk tensors.
-
-        Also if we slice only ``y_hat`` leaving risk tensors untouched that would violate our own
+        of the risk tensors. Also if we slice only ``y_hat`` leaving risk tensors untouched that would violate our own
         ``__validate__`` method as the ``y_hat`` tensor and each of the risk tensors will have different shapes.
 
         For more examples see ``test/test_risk_tensor.py``.
 
         Parameters
         ----------
-        slice_spec : capsa.RiskTensor.Spec
+        slice_spec : slice
             The arguments to ``RiskTensor.__getitem__``.
-        var : tf.Variable, default None
-            In the case of variable slice assignment, the ``Variable`` object to slice
-            (i.e. tensor is the read-only view of this variable).
 
         Returns
         -------
@@ -194,7 +193,8 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         # implementation for the tf.Tensor could be found
         #   - ops.Tensor._override_operator("__getitem__", _slice_helper)
         #   - _slice_helper -- https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/array_ops.py#L913-L1107
-        #     This method is exposed in TensorFlow's API so that library developers can register dispatching for `Tensor.__getitem__` to allow it to handle custom composite tensors & other custom objects.
+        #     This method is exposed in TensorFlow's API so that library developers can register dispatching
+        #     for `Tensor.__getitem__` to allow it to handle custom composite tensors & other custom objects.
         # subclassing BatchableExtensionType
         #   - uses __getitem__ directly https://github.com/tensorflow/tensorflow/blob/fed8a5fe044e0ec03d7cc854b0107ddaf9148c70/tensorflow/python/ops/ragged/ragged_tensor_supported_values_test.py#L54-L55
         # Ragged Tensor
@@ -205,14 +205,10 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         #   - https://github.com/tensorflow/tensorflow/blob/717ca98d8c3bba348ff62281fdf38dcb5ea1ec92/tensorflow/python/kernel_tests/array_ops/array_ops_test.py#L579-L580
 
         return RiskTensor(
-            self.y_hat.__getitem__(slice_spec, var),
-            self.aleatoric.__getitem__(slice_spec, var)
-            if self.aleatoric != None
-            else None,
-            self.epistemic.__getitem__(slice_spec, var)
-            if self.epistemic != None
-            else None,
-            self.bias.__getitem__(slice_spec, var) if self.bias != None else None,
+            self.y_hat.__getitem__(slice_spec),
+            self.aleatoric.__getitem__(slice_spec) if self.aleatoric != None else None,
+            self.epistemic.__getitem__(slice_spec) if self.epistemic != None else None,
+            self.bias.__getitem__(slice_spec) if self.bias != None else None,
         )
 
     def __len__(self):
@@ -226,7 +222,7 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
 
     # note on operator overloading:
     #
-    # ``tf.RuggedTensor`` also
+    # ``tf.RuggedTensor`` also:
     # 1. registers unary and binary API handlers for dispatch -- https://github.com/tensorflow/tensorflow/blob/2b7a2d357869264f5dab700af6e1ce95bbc28df6/tensorflow/python/ops/ragged/ragged_dispatch.py#L28-L78
     # 2. registering dispatch handlers allows to use many standard TF ops without overriding each one of them
     #    (e.g., we can use all binary ops since we've created binary_elementwise_api_handlers).
@@ -234,13 +230,14 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     #       - uses them in the main class https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/ragged/ragged_tensor.py#L2169-L2215
     #       - the elementwise ops https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/math_ops.py
     #
-    # It appears that calling the individual ops like this (e.g. __add__ = tf.add(x, y))
+    # It appears that calling the individual ops like this (__add__ = tf.add(x, y))
     # is equivalent to calling them through math ops (__add__ = math_ops.add).
     # We follow RuggedTensor's implementation and use the latter way.
     #
-    # For docs see this and all the ops below https://www.tensorflow.org/api_docs/python/tf/Tensor#__abs__.
-    # For the RiskTensor behavior is essentially the same but with the constraints imposed by our
-    # 'unary_elementwise_op_handler' and 'binary_elementwise_api_handler' (please see their docs),
+    # Note: For docs of the functions that we use below for operator overloading see https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/math_ops.py
+    # but note they describe behavior of tf.Tensor. For RiskTensor behavior is essentially
+    # the same but slightly modified by our 'unary_elementwise_op_handler' and our
+    # 'binary_elementwise_api_handler's (please see their docs in this file),
     # depending on whether or not an opp is binary or unary.
 
     # Ordering operators
@@ -287,16 +284,16 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
 
     def replace_risk(self, new_aleatoric=None, new_epistemic=None, new_bias=None):
         """
-        All ``tf.Tensors`` are immutable: you can never update the contents of a tensor, only
-        create a new one `reference <https://www.tensorflow.org/guide/tensor>`_.
+        In TensorFlow all ``tf.Tensors`` are immutable: you can never update the contents
+        of a tensor, only create a new one `reference <https://www.tensorflow.org/guide/tensor>`_.
         Mutable objects may be backed by a Tensor which holds the unique handle that identifies
         the mutable object `reference <https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/types/core.py#L46-L47>`_.
         In other words, normal ``tf.Tensor`` objects are immutable. To store model weights (or other mutable
         state) ``tf.Variable`` is used `reference <https://www.tensorflow.org/guide/basics#variables>`_.
 
-        Note: `tf.extension_type <https://www.tensorflow.org/guide/extension_type>`_ and therefore an instance of a
-        ``RiskTensor`` is `immutable <https://www.tensorflow.org/guide/extension_type#mutability>`_. Because
-        ``tf.ExtensionType`` overrides the ``__setattr__`` and ``__delattr__`` methods to prevent mutation.
+        Note: similarly, `tf.extension_type <https://www.tensorflow.org/guide/extension_type>`_ and therefore
+        an instance of a ``RiskTensor`` is `immutable <https://www.tensorflow.org/guide/extension_type#mutability>`_.
+        Because ``tf.ExtensionType`` overrides the ``__setattr__`` and ``__delattr__`` methods to prevent mutation.
         This ensures that they can be properly tracked by TensorFlow's graph-tracing mechanisms.
 
         If you find yourself wanting to mutate an extension type value, consider instead using this method that
@@ -317,7 +314,7 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         Returns
         -------
         out : capsa.RiskTensor
-            Updated risk aware tensor, contains old ``y_hat`` and new risk estimates.
+            New risk aware tensor, contains old ``y_hat`` and new risk estimates.
         """
         return RiskTensor(self.y_hat, new_aleatoric, new_epistemic, new_bias)
 
@@ -342,10 +339,15 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     def to_list(self):
         """Similarly to ``tf.RaggedTensor``, requires that risk tensor was constructed in eager execution mode.
 
+        Returns a single nested ``list`` object with the values for the ``RiskTensor``.
+        If an element of a ``RiskTensor`` (e.g. ``RiskTensor.bias``) is ``None`` this method
+        returns ``None`` for the corresponding element.
+
         Returns
         -------
         out : list
             A nested Python ``list`` with the values for the ``RiskTensor``.
+
         """
         if not isinstance(self.y_hat, ops.EagerTensor):
             raise ValueError("RiskTensor.to_list() is only supported in eager mode.")
@@ -367,7 +369,11 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         """Similarly to ``tf.RaggedTensor``, requires that risk tensor was constructed
         in eager execution mode.
 
-        Returns four numpy ``array`` objects, one for each tensor contained in the ``RiskTensor``.
+        Returns four ``np.array`` objects, one for each tensor contained in the ``RiskTensor``.
+        If an element of a ``RiskTensor`` (e.g. ``RiskTensor.bias``) is ``None`` this method
+        returns ``np.nan`` for the corresponding element.
+
+        Returns
         -------
         y_hat : np.array
             Represents ``RiskTensor.y_hat``.
@@ -388,9 +394,11 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
 
     class Spec:
         # Need this only for feeding RiskTensor to the Keras model.
-        # If we don't subclass it at all we'd rely on the automatically generated typespec, which can be retrieved by ``tf.type_spec_from_value(mt)``.
-        # However his leads to ``ValueError: KerasTensor only supports TypeSpecs that have a shape field; got MaskedTensor.Spec, which does not have a shape.``
-        # To customize the TypeSpec, we define our own class named Spec, and ``ExtensionType`` will use that as the basis for the automatically constructed TypeSpec.
+        # If we don't subclass it we'd need to rely on the automatically generated typespec, which can be
+        # retrieved by ``tf.type_spec_from_value(mt)``. However his leads to ``ValueError: KerasTensor only
+        # supports TypeSpecs that have a shape field; got MaskedTensor.Spec, which does not have a shape.``
+        # To customize the TypeSpec, we define our own class named Spec, and ``ExtensionType`` will use that
+        # as the basis for the automatically constructed TypeSpec.
         def __init__(self, y_hat, dtype=tf.float32):
             self.y_hat = tf.TensorSpec(shape, dtype)
 
@@ -474,7 +482,7 @@ def unary_elementwise_op_handler(op, x):
     ``y_hat`` tensor, leaving the risk tensors untouched.
 
     The reasoning behind such a design choice is to protect a user from accidentally modifying the
-    contents of a risk tensors when the user intends to treat outputs of a metric wrapper as ``y_hat``.
+    contents of risk tensors when the user intends to treat outputs of a metric wrapper as ``y_hat``.
 
     Thus, you need to explicitly select other elements to perform uniary operations on them e.g.
     ``tf.abs(output.epistemic)`` to select absolute values of the epistemic tensor.
@@ -503,8 +511,8 @@ def binary_elementwise_api_handler_rt_rt(api_func, x, y):
     type.
 
     Thus, you don't need to explicitly select other elements to perform binary operations on them e.g.
-    ``tf.math.subtract(output1.epistemic, output2.epistemic)`` to subtract values of the epistemic tensors,
-    simply calling ``tf.math.subtract(output1, output2)`` will subtract all elements of the risk tensors.
+    ``tf.subtract(output1.epistemic, output2.epistemic)`` to subtract values of the epistemic tensors,
+    simply calling ``tf.subtract(output1, output2)`` will subtract all elements of the risk tensors.
     """
     # print("capsa.RiskTensor and capsa.RiskTensor")
     are_both_aleatoric, are_both_epistemic, are_both_bias = _are_all_risk([x, y])
@@ -528,9 +536,9 @@ def binary_elementwise_api_handler_rt_other(api_func, x, y):
     For more details see `dispatch for binary elementwise APIs <https://www.tensorflow.org/guide/extension_type#dispatch_for_binary_all_elementwise_apis>`_.
 
     Note: By design the `binary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_
-    for a ``tf.Tensor`` and a ``RiskTensor`` are performed on ``y_hat`` only.
+    for a ``RiskTensor`` and a ``Union[tf.Tensor, np.ndarray, int, float]`` are performed on ``y_hat`` only.
 
-    The reasoning behind such a design choice is that the ``tf.Tensor`` simply doesn't have the
+    The reasoning behind such a design choice is that e.g. ``tf.Tensor`` simply doesn't have the
     risk elements to perform a binary operation on.
     """
     # print(f"{type(x), type(y)}")
@@ -542,12 +550,18 @@ def binary_elementwise_api_handler_rt_other(api_func, x, y):
     RiskTensor,
 )
 def binary_elementwise_api_handler_other_rt(api_func, x, y):
-    """Same as ``binary_elementwise_api_handler_rt_other`` but applied for a ``tf.Tensor`` and  a ``RiskTensor`` (different order)."""
+    """Same as ``binary_elementwise_api_handler_rt_other`` but applied for a ``Union[tf.Tensor, np.ndarray, int, float]`
+    and  a ``RiskTensor`` (different order). In other words this is right-handed version of the mentioned function.
+    """
     # without ops.convert_to_tensor will give an err as under the hood only y gets converted to the x's dtype and not the other way around
     # https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/math_ops.py#L3999-L4000
     # todo-low: use _right func instep, then it should work
     # >>> print("rt + 2", rt + 2) # works because under the hood converts second item to the dtype of the first
-    # >>> print("2 + rt", 2 + rt, "\n") # fails because under the hood AGAIN tires converts second item to the dtype of the first
+    # >>> print("2 + rt", 2 + rt, "\n") # fails because under the hood AGAIN tries to converts second item to the dtype of the first
+    ### also described here "Limitation: this Op only broadcasts the dense side to the sparse side, but not the other direction." https://www.tensorflow.org/api_docs/python/tf/sparse/SparseTensor#__div__
+    # t = tf.convert_to_tensor(np.random.rand(2, 2))
+    # tf.add(t, 1) # works
+    # tf.add(1, t) >>>InvalidArgumentError: cannot compute AddV2 as input #1(zero-based) was expected to be a int32 tensor but is a double tensor [Op:AddV2]
     # print(f"{type(x), type(y)}")
     x = ops.convert_to_tensor(x, dtype_hint=y.dtype.base_dtype)
     return RiskTensor(api_func(x, y.y_hat), None, None, None)
@@ -668,8 +682,8 @@ def risk_add_n(inputs: List[RiskTensor], name=None):
 
 # The dispatch decorators are used to override the default behavior of several TensorFlow APIs.
 # Since these APIs are used by standard Keras layers (such as the Dense layer), overriding these will
-# allow us to use those layers with RiskTensor. For the purposes of this example, matmul for risk
-# tensors is defined to treat the risk values as zeros (that is, to not include them in the product).
+# allow us to use those layers with RiskTensor. For now, matmul for risk tensors is defined to treat
+# the risk values as zeros (that is, to not include them in the product).
 @tf.experimental.dispatch_for_api(tf.matmul)
 def risk_matmul(
     a: RiskTensor,
