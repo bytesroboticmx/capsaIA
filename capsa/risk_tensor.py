@@ -424,6 +424,44 @@ def _are_all_risk(list_risk_tens):
     return is_aleatoric, is_epistemic, is_bias
 
 
+def base_x(api, x):
+    """
+    Convenience function used in dispatch for apis to avoid code duplication as most of them require almost
+    the same logic except for the name of the api. The function is used for apis that operate on a single
+    risk tensor.
+
+    Similar to the `RuggedTensor <https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/ragged/ragged_math_ops.py#L476-L692>`_
+    which implements one base function and reuses it for multiple different apis.
+    """
+    is_aleatoric, is_epistemic, is_bias = _is_risk(x)
+    return RiskTensor(
+        api(x.y_hat),
+        api(x.aleatoric) if is_aleatoric else None,
+        api(x.epistemic) if is_epistemic else None,
+        api(x.bias) if is_bias else None,
+    )
+
+
+def base_list_x(api, lis):
+    """
+    Convenience function used in dispatch for apis to avoid code duplication as most of them require almost
+    the same logic except for the name of the api. The function is used for apis that operate on a list of
+    risk tensors.
+
+    Loop over the ``RiskTensors`` passed to an api, if any one of them
+    doesn't have e.g. aleatoric risk estimate do not run the api on aleatoric risks
+    (even if the other tensors passed to the api do have risk estimate of this type)
+    """
+    are_all_aleatoric, are_all_epistemic, are_all_bias = _are_all_risk(lis)
+
+    return RiskTensor(
+        api([i.y_hat for i in lis]),
+        api([i.aleatoric for i in lis]) if are_all_aleatoric else None,
+        api([i.epistemic for i in lis]) if are_all_epistemic else None,
+        api([i.bias for i in lis]) if are_all_bias else None,
+    )
+
+
 ##########################
 # dispatch for unary and
 # binary element wise apis
@@ -521,7 +559,6 @@ def binary_elementwise_api_handler_other_rt(api_func, x, y):
 # dispatch for apis
 ####################
 
-
 ### operate on one element
 
 
@@ -554,127 +591,67 @@ def risk_convert_to_tensor(value: RiskTensor, dtype=None, dtype_hint=None, name=
 @tf.experimental.dispatch_for_api(tf.reshape)
 def risk_reshape(tensor: RiskTensor, shape, name=None):
     """Specifies how ``tf.reshape`` should process ``RiskTensor`` values."""
-    is_aleatoric, is_epistemic, is_bias = _is_risk(tensor)
-    return RiskTensor(
-        tf.reshape(tensor.y_hat, shape, name),
-        tf.reshape(tensor.aleatoric, shape, name) if is_aleatoric else None,
-        tf.reshape(tensor.epistemic, shape, name) if is_epistemic else None,
-        tf.reshape(tensor.bias, shape, name) if is_bias else None,
-    )
+    api = lambda x: tf.reshape(x, shape, name)
+    return base_x(api, tensor)
 
 
-@tf.experimental.dispatch_for_api(tf.math.reduce_all)
-def risk_reduce_all(input_tensor: RiskTensor, axis=None, keepdims=False):
-    """Specifies how ``tf.math.reduce_all`` should process ``RiskTensor`` values."""
-    is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
-    return RiskTensor(
-        tf.math.reduce_all(input_tensor.y_hat, axis),
-        tf.math.reduce_all(input_tensor.aleatoric, axis) if is_aleatoric else None,
-        tf.math.reduce_all(input_tensor.epistemic, axis) if is_epistemic else None,
-        tf.math.reduce_all(input_tensor.bias, axis) if is_bias else None,
-    )
+@tf.experimental.dispatch_for_api(tf.reduce_all)
+def risk_reduce_all(input_tensor: RiskTensor, axis=None, keepdims=False, name=None):
+    """Specifies how ``tf.reduce_all`` should process ``RiskTensor`` values."""
+    api = lambda x: tf.reduce_all(x, axis, keepdims, name)
+    return base_x(api, input_tensor)
 
 
 @tf.experimental.dispatch_for_api(tf.math.reduce_std)
-def risk_reduce_std(input_tensor: RiskTensor, axis=None, keepdims=False):
+def risk_reduce_std(input_tensor: RiskTensor, axis=None, keepdims=False, name=None):
     """Specifies how ``tf.math.reduce_std`` should process ``RiskTensor`` values."""
-    is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
-    return RiskTensor(
-        tf.math.reduce_std(input_tensor.y_hat, axis),
-        tf.math.reduce_std(input_tensor.aleatoric, axis) if is_aleatoric else None,
-        tf.math.reduce_std(input_tensor.epistemic, axis) if is_epistemic else None,
-        tf.math.reduce_std(input_tensor.bias, axis) if is_bias else None,
-    )
+    api = lambda x: tf.math.reduce_std(x, axis, keepdims, name)
+    return base_x(api, input_tensor)
 
 
-@tf.experimental.dispatch_for_api(tf.math.reduce_mean)
-def risk_reduce_mean(input_tensor: RiskTensor, axis=None, keepdims=False):
-    """Specifies how ``tf.math.reduce_mean`` should process ``RiskTensor`` values."""
-    is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
-    return RiskTensor(
-        tf.math.reduce_mean(input_tensor.y_hat, axis),
-        tf.math.reduce_mean(input_tensor.aleatoric, axis) if is_aleatoric else None,
-        tf.math.reduce_mean(input_tensor.epistemic, axis) if is_epistemic else None,
-        tf.math.reduce_mean(input_tensor.bias, axis) if is_bias else None,
-    )
+@tf.experimental.dispatch_for_api(tf.reduce_mean)
+def risk_reduce_mean(input_tensor: RiskTensor, axis=None, keepdims=False, name=None):
+    """Specifies how ``tf.reduce_mean`` should process ``RiskTensor`` values."""
+    api = lambda x: tf.reduce_mean(x, axis, keepdims, name)
+    return base_x(api, input_tensor)
 
 
-@tf.experimental.dispatch_for_api(tf.math.reduce_sum)
-def risk_reduce_sum(input_tensor: RiskTensor, axis=None, keepdims=False):
-    """Specifies how ``tf.math.reduce_sum`` should process ``RiskTensor`` values."""
-    is_aleatoric, is_epistemic, is_bias = _is_risk(input_tensor)
-    return RiskTensor(
-        tf.math.reduce_sum(input_tensor.y_hat, axis),
-        tf.math.reduce_sum(input_tensor.aleatoric, axis) if is_aleatoric else None,
-        tf.math.reduce_sum(input_tensor.epistemic, axis) if is_epistemic else None,
-        tf.math.reduce_sum(input_tensor.bias, axis) if is_bias else None,
-    )
+@tf.experimental.dispatch_for_api(tf.reduce_sum)
+def risk_reduce_sum(input_tensor: RiskTensor, axis=None, keepdims=False, name=None):
+    """Specifies how ``tf.reduce_sum`` should process ``RiskTensor`` values."""
+    api = lambda x: tf.reduce_sum(x, axis, keepdims, name)
+    return base_x(api, input_tensor)
 
 
 @tf.experimental.dispatch_for_api(tf.transpose)
 def risk_transpose(a: RiskTensor, perm=None, conjugate=False, name="transpose"):
     """Specifies how ``tf.transpose`` should process ``RiskTensor`` inputs."""
-    is_aleatoric, is_epistemic, is_bias = _is_risk(a)
-    return RiskTensor(
-        tf.transpose(a.y_hat, perm, conjugate, name),
-        tf.transpose(a.aleatoric, perm, conjugate, name) if is_aleatoric else None,
-        tf.transpose(a.epistemic, perm, conjugate, name) if is_epistemic else None,
-        tf.transpose(a.bias, perm, conjugate, name) if is_bias else None,
-    )
+    api = lambda x: tf.transpose(x, perm, conjugate, name)
+    return base_x(api, a)
 
 
 ### operate on list of risk tensors
 
 
 @tf.experimental.dispatch_for_api(tf.stack)
-def risk_stack(values: List[RiskTensor], axis=0):
+def risk_stack(values: List[RiskTensor], axis=0, name="stack"):
     """Specifies how ``tf.stack`` should process ``RiskTensor`` values."""
-
-    # loop over the RiskTensors passed to tf.stack, if any one of them
-    # doesn't have e.g. aleatoric risk estimate do not stack aleatoric risks
-    # (even if the other tensors passed to tf.stack do have risk estimate of this type)
-    are_all_aleatoric, are_all_epistemic, are_all_bias = _are_all_risk(values)
-
-    return RiskTensor(
-        tf.stack([v.y_hat for v in values], axis),
-        tf.stack([v.aleatoric for v in values], axis) if are_all_aleatoric else None,
-        tf.stack([v.epistemic for v in values], axis) if are_all_epistemic else None,
-        tf.stack([v.bias for v in values], axis) if are_all_bias else None,
-    )
+    api = lambda x: tf.stack(x, axis, name)
+    return base_list_x(api, values)
 
 
 @tf.experimental.dispatch_for_api(tf.concat)
-def risk_concat(values: List[RiskTensor], axis):
+def risk_concat(values: List[RiskTensor], axis, name="concat"):
     """Specifies how ``tf.concat`` should process ``RiskTensor`` values."""
-
-    # loop over the RiskTensors passed to tf.concat, if any one of them
-    # doesn't have e.g. aleatoric risk estimate do not concat aleatoric risks
-    # (even if the other tensors passed to tf.concat do have risk estimate of this type)
-    are_all_aleatoric, are_all_epistemic, are_all_bias = _are_all_risk(values)
-
-    return RiskTensor(
-        tf.concat([v.y_hat for v in values], axis),
-        tf.concat([v.aleatoric for v in values], axis) if are_all_aleatoric else None,
-        tf.concat([v.epistemic for v in values], axis) if are_all_epistemic else None,
-        tf.concat([v.bias for v in values], axis) if are_all_bias else None,
-    )
+    api = lambda x: tf.concat(x, axis, name)
+    return base_list_x(api, values)
 
 
-@tf.experimental.dispatch_for_api(tf.math.add_n)
-def risk_add_n(inputs: List[RiskTensor]):
-    """Specifies how ``tf.math.add_n`` should process ``RiskTensor`` inputs."""
-
-    # loop over the RiskTensors passed to tf.math.add_n, if any one of them
-    # doesn't have e.g. aleatoric risk estimate do not math.add_n aleatoric risks
-    # (even if the other tensors passed to tf.math.add_n do have risk estimate of this type)
-    are_all_aleatoric, are_all_epistemic, are_all_bias = _are_all_risk(inputs)
-
-    return RiskTensor(
-        tf.math.add_n([v.y_hat for v in inputs]),
-        tf.math.add_n([v.aleatoric for v in inputs]) if are_all_aleatoric else None,
-        tf.math.add_n([v.epistemic for v in inputs]) if are_all_epistemic else None,
-        tf.math.add_n([v.bias for v in inputs]) if are_all_bias else None,
-    )
+@tf.experimental.dispatch_for_api(tf.add_n)
+def risk_add_n(inputs: List[RiskTensor], name=None):
+    """Specifies how ``tf.add_n`` should process ``RiskTensor`` inputs."""
+    api = lambda x: tf.add_n(x, name)
+    return base_list_x(api, inputs)
 
 
 # @tf.experimental.dispatch_for_api(tf.debugging.assert_equal)
