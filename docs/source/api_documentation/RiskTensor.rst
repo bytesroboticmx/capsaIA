@@ -11,6 +11,13 @@ RiskTensor
 .. automethod:: capsa.RiskTensor.__repr__
 .. automethod:: capsa.RiskTensor.__validate__
 .. automethod:: capsa.RiskTensor.replace_risk
+.. automethod:: capsa.RiskTensor.__getitem__
+.. automethod:: capsa.RiskTensor.__len__
+.. automethod:: capsa.RiskTensor.ndim
+.. automethod:: capsa.RiskTensor.device
+.. automethod:: capsa.RiskTensor.to_list
+.. automethod:: capsa.RiskTensor.numpy
+
 
 .. currentmodule:: capsa.risk_tensor
 
