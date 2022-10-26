@@ -18,13 +18,10 @@ RiskTensor
 .. automethod:: capsa.RiskTensor.to_list
 .. automethod:: capsa.RiskTensor.numpy
 
-
 .. currentmodule:: capsa.risk_tensor
 
 .. autofunction:: unary_elementwise_op_handler
-.. autofunction:: binary_elementwise_api_handler_rt_rt
-.. autofunction:: binary_elementwise_api_handler_rt_other
-.. autofunction:: binary_elementwise_api_handler_other_rt
+.. autofunction:: binary_elementwise_op_handler
 
 .. autofunction:: risk_shape
 .. autofunction:: risk_size

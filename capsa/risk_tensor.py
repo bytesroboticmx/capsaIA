@@ -225,7 +225,7 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     # ``tf.RuggedTensor`` also:
     # 1. registers unary and binary API handlers for dispatch -- https://github.com/tensorflow/tensorflow/blob/2b7a2d357869264f5dab700af6e1ce95bbc28df6/tensorflow/python/ops/ragged/ragged_dispatch.py#L28-L78
     # 2. registering dispatch handlers allows to use many standard TF ops without overriding each one of them
-    #    (e.g., we can use all binary ops since we've created binary_elementwise_api_handlers).
+    #    (e.g., we can use all binary ops since we've created binary_elementwise_op_handler).
     #       - just defines in a separate file https://github.com/tensorflow/tensorflow/blob/2b7a2d357869264f5dab700af6e1ce95bbc28df6/tensorflow/python/ops/ragged/ragged_operators.py
     #       - uses them in the main class https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/ragged/ragged_tensor.py#L2169-L2215
     #       - the elementwise ops https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/math_ops.py
@@ -237,7 +237,7 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     # Note: For docs of the functions that we use below for operator overloading see https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/math_ops.py
     # but note they describe behavior of tf.Tensor. For RiskTensor behavior is essentially
     # the same but slightly modified by our 'unary_elementwise_op_handler' and our
-    # 'binary_elementwise_api_handler's (please see their docs in this file),
+    # 'binary_elementwise_op_handler' (please see their docs in this file),
     # depending on whether or not an opp is binary or unary.
 
     # Ordering operators
@@ -493,10 +493,10 @@ def unary_elementwise_op_handler(op, x):
 
 
 @tf.experimental.dispatch_for_binary_elementwise_apis(
-    RiskTensor,
-    RiskTensor,
+    Union[RiskTensor, tf.Tensor, np.ndarray, int, float],
+    Union[RiskTensor, tf.Tensor, np.ndarray, int, float],
 )
-def binary_elementwise_api_handler_rt_rt(api_func, x, y):
+def binary_elementwise_op_handler(op, x, y):
     """
     The decorated function (known as the "elementals api handler") overrides the default implementation for any binary elementals API,
     whenever the value for the first two arguments (typically named ``x`` and ``y``) match the specified type annotations.
@@ -506,34 +506,13 @@ def binary_elementwise_api_handler_rt_rt(api_func, x, y):
     for two ``RiskTensor``'s are performed on ``y_hat`` tensors, as well as on the risk tensors (if both of them are not ``None``).
 
     The reasoning behind such a design choice is that in this scenario when operations are performed on two
-    ``RiskTensor``'s (not on a ``RiskTensor`` and a ``tf.Tensor``) there's no need to protect a user
-    from accidentally modifying their risk contents because both inputs of the binary operation have the same
-    type.
+    ``RiskTensor``'s (`not` on a ``RiskTensor`` and e.g. a ``tf.Tensor``) there's no need to protect a user
+    from accidentally modifying their risk contents because both inputs of the binary operation have the
+    same type.
 
     Thus, you don't need to explicitly select other elements to perform binary operations on them e.g.
     ``tf.subtract(output1.epistemic, output2.epistemic)`` to subtract values of the epistemic tensors,
     simply calling ``tf.subtract(output1, output2)`` will subtract all elements of the risk tensors.
-    """
-    # print("capsa.RiskTensor and capsa.RiskTensor")
-    are_both_aleatoric, are_both_epistemic, are_both_bias = _are_all_risk([x, y])
-
-    return RiskTensor(
-        api_func(x.y_hat, y.y_hat),
-        api_func(x.aleatoric, y.aleatoric) if are_both_aleatoric else None,
-        api_func(x.epistemic, y.epistemic) if are_both_epistemic else None,
-        api_func(x.bias, y.bias) if are_both_bias else None,
-    )
-
-
-@tf.experimental.dispatch_for_binary_elementwise_apis(
-    RiskTensor,
-    Union[tf.Tensor, np.ndarray, int, float],
-)
-def binary_elementwise_api_handler_rt_other(api_func, x, y):
-    """
-    The decorated function (known as the "elementals api handler") overrides the default implementation for any binary elementals API,
-    whenever the value for the first two arguments (typically named ``x`` and ``y``) match the specified type annotations.
-    For more details see `dispatch for binary elementwise APIs <https://www.tensorflow.org/guide/extension_type#dispatch_for_binary_all_elementwise_apis>`_.
 
     Note: By design the `binary operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_
     for a ``RiskTensor`` and a ``Union[tf.Tensor, np.ndarray, int, float]`` are performed on ``y_hat`` only.
@@ -541,30 +520,35 @@ def binary_elementwise_api_handler_rt_other(api_func, x, y):
     The reasoning behind such a design choice is that e.g. ``tf.Tensor`` simply doesn't have the
     risk elements to perform a binary operation on.
     """
-    # print(f"{type(x), type(y)}")
-    return RiskTensor(api_func(x.y_hat, y), None, None, None)
-
-
-@tf.experimental.dispatch_for_binary_elementwise_apis(
-    Union[tf.Tensor, np.ndarray, int, float],
-    RiskTensor,
-)
-def binary_elementwise_api_handler_other_rt(api_func, x, y):
-    """Same as ``binary_elementwise_api_handler_rt_other`` but applied for a ``Union[tf.Tensor, np.ndarray, int, float]`
-    and  a ``RiskTensor`` (different order). In other words this is right-handed version of the mentioned function.
-    """
-    # without ops.convert_to_tensor will give an err as under the hood only y gets converted to the x's dtype and not the other way around
+    if isinstance(x, RiskTensor) and isinstance(y, RiskTensor):
+        are_both_aleatoric, are_both_epistemic, are_both_bias = _are_all_risk([x, y])
+        return RiskTensor(
+            op(x.y_hat, y.y_hat),
+            op(x.aleatoric, y.aleatoric) if are_both_aleatoric else None,
+            op(x.epistemic, y.epistemic) if are_both_epistemic else None,
+            op(x.bias, y.bias) if are_both_bias else None,
+        )
+    # without tf.cast will give an err as under the hood only y gets converted to the x's dtype and not the other way around
     # https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/math_ops.py#L3999-L4000
-    # todo-low: use _right func instep, then it should work
-    # >>> print("rt + 2", rt + 2) # works because under the hood converts second item to the dtype of the first
-    # >>> print("2 + rt", 2 + rt, "\n") # fails because under the hood AGAIN tries to converts second item to the dtype of the first
-    ### also described here "Limitation: this Op only broadcasts the dense side to the sparse side, but not the other direction." https://www.tensorflow.org/api_docs/python/tf/sparse/SparseTensor#__div__
-    # t = tf.convert_to_tensor(np.random.rand(2, 2))
-    # tf.add(t, 1) # works
-    # tf.add(1, t) >>>InvalidArgumentError: cannot compute AddV2 as input #1(zero-based) was expected to be a int32 tensor but is a double tensor [Op:AddV2]
-    # print(f"{type(x), type(y)}")
-    x = ops.convert_to_tensor(x, dtype_hint=y.dtype.base_dtype)
-    return RiskTensor(api_func(x, y.y_hat), None, None, None)
+    # also described here "Limitation: this Op only broadcasts the dense side to the sparse side, but not the other direction."
+    # https://www.tensorflow.org/api_docs/python/tf/sparse/SparseTensor#__div__
+    # >>> t = tf.convert_to_tensor(np.random.rand(2, 2))
+    # >>> tf.add(t, 1) # works
+    # >>> tf.add(1, t) # error
+    elif isinstance(x, RiskTensor):
+        return RiskTensor(op(x.y_hat, y), None, None, None)
+    elif isinstance(y, RiskTensor):
+        x = tf.cast(x, y.dtype)
+        return RiskTensor(op(x, y.y_hat), None, None, None)
+    else:
+        # Implemented all possible combinations of input types for dispatch_for_binary_elementwise_apis into this single func, following
+        # https://github.com/tensorflow/tensorflow/blob/v2.10.0/tensorflow/python/ops/ragged/ragged_dispatch.py#L36-L78
+        # So we do Union[risk_tens, np.arr, tf.Tensor, ...], Union[risk_tens, np.arr, tf.Tensor, ...] because apparently tf implements
+        # some mechanisms under the hood to prevent this dispatcher being invoked for e.g., (array and array) or (Tensor and Tensor)
+        # here we just take an extra precaution and rase err if this dispatcher gets invoked for non RiskTensor inputs.
+        raise ValueError(
+            f"expected at least one of the inputs to be RiskTensor, saw {type(x), type(y)}"
+        )
 
 
 ####################
