@@ -26,7 +26,12 @@ Capsa Documentation
 :abbr:`Capsa ((noun): latin root for a capsule or container.)` automatically wraps ML workflows to achieve risk-aware learning and deployment.
 
 
-.. image:: out.png
+.. image:: themis-light.png
+    :class: only-light
+
+.. image:: themis-dark.png
+    :class: only-dark
+
 
 
 Quickstart
