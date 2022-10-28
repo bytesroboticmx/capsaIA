@@ -33,36 +33,6 @@ Capsa Documentation
     :class: only-dark
 
 
-
-Quickstart
-==========
-
-1. Install ``capsa``
------------------------
-
-.. tabs::
-
-   .. tab:: pip
-
-      .. code-block:: bash
-
-         pip install capsa
-
-   .. tab:: conda
-
-      .. code-block:: bash
-
-         conda install -c themisai capsa
-
-   .. tab:: source
-
-      .. code-block:: bash
-
-         pip install git+https://github.com/themisai/capsa.git
-
-
-
-
 Indices and tables
 ==================
 
