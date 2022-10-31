@@ -45,8 +45,6 @@ Bias
 
 **Bias** of a dataset uncovers the imbalance in the feature space and captures whether certain combinations of features are more frequent than others. In **capsa**, the features considered come from feature extractor.  
 
- **Histogram Wrapper:** Bla bla
-
 Uncertainty
 ***********
 .. image:: epistemic-light.png
@@ -57,13 +55,6 @@ Uncertainty
 
 Also can be referred as **epistemic uncertainty**, this risk metric measures the uncertainty in the model's predictive process - this captures scenarios such as examples that are "hard" to learn, examples whose features are underrepresented, and/or out-of-distribution data.
 
-Currently, **capsa** supports two metric wrappers that implement **epistemic uncertainty** using two different algorithms:
-
- **Dropout Wrapper:** Bla bla
-
- **Ensemble Wrapper:** Bla bla
-
- **VAE Wrapper:** Bla bla
 
 
 Label Noise
@@ -75,5 +66,3 @@ Label Noise
     :class: only-dark
 
 Also can be referred as **aleatoric uncertainty**, this risk metric captures noise in the data: mislabeled datapoints, ambiguous labels, classes with low seperation, etc.
-
- **MVE Wrapper:** bla bla
