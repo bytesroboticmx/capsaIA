@@ -14,3 +14,5 @@ API Documentation
     VAEWrapper
     EnsembleWrapper
     DropoutWrapper
+
+    HistogramWrapper

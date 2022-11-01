@@ -46,14 +46,14 @@ Simply calling the wrapped model will return a dictionary of Metric Wrapper outp
     print(bias_wrapper_output[0]) #Prints bias wrapper prediction for the sample
     print(bias_wrapper_output[1]) #Prints bias wrapper risk metric for the sample
 
-Each **Metric Wrapper** output is a tuple of prediction and risk metric. The prediction is the same shape as the output of the original model. To access a specific Metric Wrapper's output, we simply need to search through wrapped_model output with the corresponding key.
+Each **Metric Wrapper** output is a tuple of prediction and risk metric. The prediction is the same shape as the output of the original model. To access a specific Metric Wrapper's output, we simply need to search through ``wrapped_model`` output with the corresponding key.
 
  
 
 Metric Wrapper
 --------------
 
-As we've mentioned previously, a **Metric Wrapper** implements the corresponding risk metric. They are designed to be composable with each other. This means that we can combine multiple **Metric Wrapper**s in a single wrapped model, giving us access to multiple risk metrics. 
+As we've mentioned previously, a **Metric Wrapper** implements the corresponding risk metric. They are designed to be composable with each other. This means that we can combine multiple Metric Wrappers in a single wrapped model, giving us access to multiple risk metrics. 
 
 .. important::
     There are limitations on composability within metric wrappers. For example, Dropout Wrapper is not compatible with other metric wrappers due to the way dropout is implemented after each layer in the feature extractor. These will be addressed in future updates. 
@@ -62,22 +62,29 @@ As we've mentioned previously, a **Metric Wrapper** implements the corresponding
 
 Bias
 ****
-Bias risk metric is implemented using a Metric Wrapper called **Histogram Wrapper**. The Histogram Wrapper separates the output layer of the original model from the rest of the model. The output layer is then replaced with a histogram layer. During training time, the histogram layer is updated with  
+Bias risk metric is implemented using a Metric Wrapper called **Histogram Wrapper**. The Histogram Wrapper will collect the activations of a target hidden layer of the model and store them in a histogram. The histogram is then used to compute the representation bias of a given sample during inference time.
 
- **Histogram Wrapper:** The histogram wrapper is a metric wrapper that computes the histogram of the feature space. It is used to compute the bias of the dataset.
+ `Histogram Wrapper <../api_documentation/HistogramWrapper.html>`_
+
 
 
 Uncertainty
 ***********
+Epistemic Uncertainty risk metric has three different measurement methodologies: **Dropout Wrapper**, **Ensemble Wrapper**, and **VAE Wrapper**. 
 
+Dropout Wrapper adds dropout layers to the model. During inference time, we run the model multiple times with the same input. This gives us both prediction and an estimate of the epistemic uncertainty (variance of the output) of the model.
 
- **Dropout Wrapper:** Bla bla
+Ensemble Wrapper is the gold standard approach to accurately estimating epistemic uncertainty. It is implemented by training multiple models with same architecture, but different weights. During inference time, we pass a sample through each model(ensemble). This gives us both prediction and an estimate of the epistemic uncertainty.
 
- **Ensemble Wrapper:** Bla bla
+VAE Wrapper adds a decoder to a given model. The decoder is trained to reconstruct the input. During inference time, we pass a sample through the model and the decoder. The reconstruction loss between decoder output and the given input gives us an estimate of the epistemic uncertainty.
 
- **VAE Wrapper:** Bla bla
+ `Dropout Wrapper <../api_documentation/DropoutWrapper.html>`_
+
+ `Ensemble Wrapper <../api_documentation/EnsembleWrapper.html>`_
+
+ `VAE Wrapper <../api_documentation/VAEWrapper.html>`_
 
 Label Noise
 ***********
 
- **MVE Wrapper:** 
+ `MVE Wrapper <../api_documentation/MVEWrapper.html>`_
