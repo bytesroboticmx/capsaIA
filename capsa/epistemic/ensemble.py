@@ -1,7 +1,9 @@
 import tensorflow as tf
 from tensorflow import keras
 from keras import optimizers as optim
+
 from ..base_wrapper import BaseWrapper
+from ..risk_tensor import RiskTensor
 
 
 class EnsembleWrapper(BaseWrapper):
@@ -203,13 +205,14 @@ class EnsembleWrapper(BaseWrapper):
 
         Returns
         -------
-        y_hat : tf.Tensor
-            Predicted label.
-        risk : tf.Tensor
-            Epistemic uncertainty estimate.
+        out : capsa.RiskTensor
+            Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the epistemic
+            uncertainty estimate (tf.Tensor).
         """
+        T = 1 if return_risk is False else self.num_members
+
         outs = []
-        for wrapper in self.metrics_compiled.values():
+        for wrapper in list(self.metrics_compiled.values())[:T]:
             # ensembling the user model
             if self.metric_wrapper is None:
                 out = wrapper(x)
@@ -218,12 +221,14 @@ class EnsembleWrapper(BaseWrapper):
                 out = wrapper(x, training, return_risk, features)
             outs.append(out)
 
-        outs = tf.stack(outs)
-        # ensembling the user model
-        if self.metric_wrapper is None:
-            return tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
-        # ensembling one of our own metrics
+        if not return_risk:
+            return out
         else:
-            y_hats = outs[:, 0]  #  (n_members, 2, N, 1) -> (n_members, N, 1)
-            risks = outs[:, 1]  #  (n_members, 2, N, 1) -> (n_members, N, 1)
-            return tf.reduce_mean(y_hats, 0), tf.math.reduce_mean(risks, 0)
+            outs = tf.stack(outs)
+            # ensembling the user model
+            if self.metric_wrapper is None:
+                mean, std = tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
+                return RiskTensor(mean, epistemic=std)
+            # ensembling one of our own metrics
+            else:
+                return tf.reduce_mean(outs, 0)

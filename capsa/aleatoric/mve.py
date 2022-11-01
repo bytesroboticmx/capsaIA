@@ -1,8 +1,9 @@
 import tensorflow as tf
 from tensorflow import keras
 
-from ..utils import copy_layer
 from ..base_wrapper import BaseWrapper
+from ..risk_tensor import RiskTensor
+from ..utils import copy_layer
 
 
 def neg_log_likelihood(y, mu, logvar):
@@ -109,22 +110,22 @@ class MVEWrapper(BaseWrapper):
 
         Returns
         -------
-        y_hat : tf.Tensor
-            Predicted label.
-        var : tf.Tensor
-            Aleatoric uncertainty estimate.
+        out : capsa.RiskTensor
+            Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the aleatoric
+            uncertainty estimate (tf.Tensor).
         """
         if self.is_standalone:
             features = self.feature_extractor(x, training)
         y_hat = self.out_layer(features)
 
         if not return_risk:
-            return y_hat
+            return RiskTensor(y_hat)
         else:
             logvar = self.out_logvar(features)
             if not training:
                 var = tf.exp(logvar)
-                return y_hat, var
+                return RiskTensor(y_hat, aleatoric=var)
+            # used in loss_fn
             else:
                 mu = self.out_mu(features)
                 return y_hat, mu, logvar
