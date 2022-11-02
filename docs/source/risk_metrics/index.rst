@@ -20,7 +20,8 @@ Representation Bias
 .. image:: bias-dark.PNG
     :class: only-dark
 
-**Bias** of a dataset uncovers the imbalance in the feature space and captures whether certain combinations of features are more frequent than others. For example, in driving datasets, it has been demonstrated that the combination of straight roads, sunlight and no traffic is higher than any other feature combinations, indicating that the model may be biased towards this combination of features ( i.e. this feature combination is **overrepresented** ).
+**Bias** of a dataset uncovers the imbalance in the feature space and captures whether certain combinations of features are more frequent than others. 
+For example, in driving datasets, it has been demonstrated that the combination of straight roads, sunlight and no traffic is higher than any other feature combinations, indicating that the model may be biased towards this combination of features (i.e. this feature combination is **overrepresented**).
 
 Epistemic Uncertainty
 *********************
