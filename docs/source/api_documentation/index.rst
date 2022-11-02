@@ -1,7 +1,7 @@
 .. _api_documentation: 
 
-API Documentation
-=================
+Metric Wrapper API
+==================
 
 .. toctree::
     :maxdepth: 1

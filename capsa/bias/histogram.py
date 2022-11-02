@@ -186,3 +186,5 @@ class HistogramLayer(tf.keras.layers.Layer):
         self.maximums.assign(tf.zeros(self.feature_dim))
 
         self.frequencies.assign(tf.zeros((self.num_bins, self.feature_dim[-1])))
+
+

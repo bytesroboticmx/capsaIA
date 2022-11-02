@@ -11,19 +11,23 @@ Eager to make your models risk-aware? This page will get you started with **caps
 Minimal Application
 ^^^^^^^^^^^^^^^^^^^
 
+Let's start with a minimal example. We will use the `iris <https://en.wikipedia.org/wiki/Iris_flower_data_set>`_ dataset from the `scikit-learn <https://scikit-learn.org/stable/>`_ package. The dataset contains 150 samples of three different species of iris flowers. The goal is to predict the species of an iris flower based on its sepal and petal length and width.
+
 .. code-block:: python
 
     import tensorflow as tf
     from tensorflow import keras
-    from capsa import wrap
+    from capsa import EnsembleWrapper
 
-    wrapped_model = wrap(model, aleatoric=True, epistemic=True, bias=True)
+    wrapped_model = EnsembleWrapper(original_model,num_members=5)
+
+    wrapped_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     wrapped_model.fit(train_x,train_y,epochs=5)
 
 What did we do?
 
-1. We imported the ``wrap()`` function. This function is the easiest way to wrap your models.
+1. 
 2. We called the ``wrap()`` function. We passed our Keras model. We also passed the arguments ``aleatoric=True``, ``epistemic=True``, and ``bias=True``. This means we want to wrap our model with all three different risk metrics: aleatoric, epistemic, and bias.
 3. We started the training process by calling the ``fit()`` method on our wrapped model. This is the same as calling the ``fit()`` method on a regular Keras model. The only difference is that the wrapped model is also updating the state of corresponding risk metric wrappers to be able to compute them later.
  
