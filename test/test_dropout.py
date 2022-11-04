@@ -28,11 +28,11 @@ def test_regression():
     history = model.fit(ds_train, epochs=30)
     plot_loss(history)
 
-    y_hat, risk = model(x_val)
+    risk_tensor = model(x_val)
     preds_names = get_preds_names(history)
 
-    plot_risk_2d(x_val, y_val, y_hat, risk, preds_names[0])
-    # plot_epistemic_2d(x, y, x_val, y_val, y_hat, risk)
+    plot_risk_2d(x_val, y_val, risk_tensor, preds_names[0])
+    # plot_epistemic_2d(x, y, x_val, y_val, risk_tensor)
 
 
 test_regression()

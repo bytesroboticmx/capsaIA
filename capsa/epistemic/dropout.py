@@ -12,6 +12,7 @@ from keras.layers import (
 )
 
 from ..base_wrapper import BaseWrapper
+from ..risk_tensor import RiskTensor
 
 
 class DropoutWrapper(BaseWrapper):
@@ -55,7 +56,7 @@ class DropoutWrapper(BaseWrapper):
         """
         super(DropoutWrapper, self).__init__(base_model, is_standalone)
 
-        self.metric_name = "DropoutWrapper"
+        self.metric_name = "dropout"
         self.is_standalone = is_standalone
         self.new_model = add_dropout(base_model, p)
 
@@ -81,8 +82,9 @@ class DropoutWrapper(BaseWrapper):
         y_hat : tf.Tensor
             Predicted label.
         """
-        y_hat = self.new_model(x, training=True)
-        return 0, y_hat
+        y_hat = self(x, training=True, return_risk=False).y_hat
+        metric_loss = 0
+        return metric_loss, y_hat
 
     def call(self, x, training=False, return_risk=True, T=20):
         """
@@ -104,21 +106,22 @@ class DropoutWrapper(BaseWrapper):
 
         Returns
         -------
-        y_hat : tf.Tensor
-            Predicted label
-        risk : tf.Tensor.
-            Epistemic uncertainty estimate.
+        out : capsa.RiskTensor
+            Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the epistemic
+            uncertainty estimate (tf.Tensor).
         """
         if not return_risk:
-            y_hat = self.new_model(x, training=training)
-            return y_hat
+            y_hat = self.new_model(x, training)
+            return RiskTensor(y_hat)
         else:
+            # user model
             outs = []
             for _ in range(T):
                 # we need training=True so that dropout is applied
-                outs.append(self.new_model(x, training=True))
+                outs.append(self.new_model(x, True))
             outs = tf.stack(outs)  # (T, N, 1)
-            return tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
+            mean, std = tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)  # (N, 1)x2
+            return RiskTensor(mean, epistemic=std)
 
 
 def add_dropout(model, p):

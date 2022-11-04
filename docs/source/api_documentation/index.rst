@@ -8,6 +8,7 @@ Metric Wrapper API
 
     ControllerWrapper
     BaseWrapper
+    RiskTensor
 
     MVEWrapper
 
