@@ -6,7 +6,7 @@ Large-scale deep neural networks (NNs) show extraordinary performance on complex
 
 **Capsa**, a flexible framework for extending models to become risk-aware, achieves this by providing two vital components that work together:
 
- **1.** Algorithmic implementations of state-of-the-art methodologies for quantifying risk.
+ **1.** Streamlined implementations of state-of-the-art methodologies for quantifying risk. Convert your models into risk-aware ones without changing any of your architecture and training code -- capsa takes care of the entire conversion process!
  
  **2.** Composition of different algorithms together to quantify different risk metrics in parallel and minimize their impact on hardware resources.
 

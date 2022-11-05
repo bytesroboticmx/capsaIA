@@ -11,7 +11,7 @@ Capsa Documentation
  
    👋 Introduction <introduction/index.rst>
    💾 Installation <getting_started/installation.rst>
-   😟 Risk Metrics <risk_metrics/index.rst>
+   ⭐️ Risk Metrics <risk_metrics/index.rst>
    🎬 Basic Usage <getting_started/basic_usage.rst>
    👩‍🏫 Tutorials <tutorials/index.rst>
    🐱‍💻 Metric Wrapper API <api_documentation/index.rst>

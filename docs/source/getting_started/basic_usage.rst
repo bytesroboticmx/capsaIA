@@ -16,7 +16,6 @@ Let's start with a minimal example. We will use ``EnsembleWrapper()``, which hel
 .. code-block:: python
 
     import tensorflow as tf
-    from tensorflow import keras
     from capsa import EnsembleWrapper
 
     wrapped_model = EnsembleWrapper(original_model,num_members=5)
@@ -28,14 +27,16 @@ Let's start with a minimal example. We will use ``EnsembleWrapper()``, which hel
 What did we do?
 
 1. We imported ``EnsembleWrapper`` class from capsa.
-2. We initialized the ``EnsembleWrapper()`` class. We passed our Keras model. We also passed the arguments ``num_members=5``. This means we want to wrap our original model with an ensemble of 5 models.
-3. We compiled the wrapped model by defining loss, optimizer and metrics.
-4. We started the training process by calling the ``fit()`` method on our wrapped model. This is the same as calling the ``fit()`` method on a regular Keras model.
+2. We initialized the ``EnsembleWrapper()`` class. We passed our Tensorflow model. We also passed the arguments ``num_members=5``. This means we want to wrap our original model with an ensemble of 5 models.
+3. We compiled the wrapped model using the same loss, optimizer and metrics that we would use on our original_model -- nothing changes! Our wrapped model takes care of the metric-specific loss and optimization changes so you don't need to.
+4. We started the training process by calling the ``fit()`` method on our wrapped model. This is the same as calling the ``fit()`` method on our ``original_model``.
  
 
 ``MetricWrapper()``
 -----------
-As we have seen, wrapping a Keras Model with any MetricWrapper is as simply as initializing the said wrapper and passing our own original mode. Metric Wrappers are designed to ease you from the burden of most complexities of wrapping your Keras models.
+
+As we have seen, wrapping a Tensorflow model with a MetricWrapper is as simple as initializing the said wrapper and passing our own original model. Metric Wrappers are designed to dissect your model and training parameters and abstract away all of the architecture changes, loss modifications so you don't need to change any of that!
+
 
 Wrapper Model Output
 --------------------
@@ -61,17 +62,19 @@ As we've mentioned previously, a **Metric Wrapper** implements the corresponding
 
 Representation Bias
 *******************
-Bias risk metric is implemented using a Metric Wrapper called **Histogram Wrapper**. The Histogram Wrapper will collect the activations of a target hidden layer of the model and store them in a histogram. The histogram is then used to compute the representation bias of a given sample during inference time.
 
- `Histogram Wrapper <../api_documentation/HistogramWrapper.html>`_
+Bias risk metric aims to estimate the density of our data in order to identify potential imbalances and underrepresented regions of our data landscape. There are many ways to perform density estimation with neural networks. Capsa supports a `Histogram Wrapper <../api_documentation/HistogramWrapper.html>`_ to progressively store activations of a target hidden layer of the model in order to measure density within a discrete histogram. The histogram is then used to compute the representation bias of a given sample during inference time. For higher dimensional datasets (e.g., images, etc) the Histogram Wrapper can be seamlessly composed with the a VAE Wrapper in order to learn a histogram over the latent space from a variational autoencoder (VAE).
+
 
 Epistemic Uncertainty
 *********************
-Epistemic Uncertainty risk metric has three different measurement methodologies: **Dropout Wrapper**, **Ensemble Wrapper**, and **VAE Wrapper**. 
 
-Dropout Wrapper adds dropout layers to the model. During inference time, we run the model multiple times with the same input. This gives us both prediction and an estimate of the epistemic uncertainty (variance of the output) of the model.
+Epistemic Uncertainty risk metric measure the uncertainty of the model's prediction -- capturing how much we can trust the model. There are many ways to estimate epistemic uncertainty, ranging from Bayesian NNs and ensemble sampling, to noise contrastive methods and evidential learning. Capsa aims to automate the conversion of your model to use any of these types methodologies seamlessly into your training and deployment pipeline, without worrying about the underlying low-level details of the methods. We currently support the following methods, with more community methods coming soon!
 
-Ensemble Wrapper is the gold standard approach to accurately estimating epistemic uncertainty. It is implemented by training multiple models with same architecture, but different weights. During inference time, we pass a sample through each model(ensemble). This gives us both prediction and an estimate of the epistemic uncertainty.
+
+Dropout Wrapper (Srivastava et al., 2014) adds dropout layers to the model. During inference time, we run the model multiple times with the same input. This gives us both prediction and an estimate of the epistemic uncertainty (variance of the output) of the model.
+
+Ensemble Wrapper (Lakshminarayanan et al., 2017) is the gold standard approach to accurately estimating epistemic uncertainty. It is implemented by training multiple models with same architecture, but different weights. During inference time, we pass a sample through each model(ensemble). This gives us both prediction and an estimate of the epistemic uncertainty.
 
 VAE Wrapper adds a decoder to a given model. The decoder is trained to reconstruct the input. During inference time, we pass a sample through the model and the decoder. The reconstruction loss between decoder output and the given input gives us an estimate of the epistemic uncertainty.
 

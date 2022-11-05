@@ -102,7 +102,6 @@ class HistogramWrapper(BaseWrapper):
 
         y_hat = self.out_layer(features)
 
-        if 
         bias = self.histogram_layer(features, training=False)
 
         return y_hat, bias
