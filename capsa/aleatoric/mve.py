@@ -11,6 +11,17 @@ def neg_log_likelihood(y, mu, logvar):
     loss = logvar + (y - mu) ** 2 / variance
     return tf.reduce_mean(loss)
 
+class Sampling(keras.layers.Layer):
+    """Uses (z_mean, z_log_var) to sample z"""
+
+    def call(self, inputs):
+        z_mean, z_log_var = inputs
+        batch = tf.shape(z_mean)[0]
+        dim = tf.shape(z_mean)[1]
+        epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
+        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
+
+
 
 class MVEWrapper(BaseWrapper):
     """Mean and Variance Estimation (Nix & Weigend, 1994). This metric
@@ -129,3 +140,4 @@ class MVEWrapper(BaseWrapper):
             else:
                 mu = self.out_mu(features)
                 return y_hat, mu, logvar
+
