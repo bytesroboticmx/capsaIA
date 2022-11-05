@@ -2,9 +2,9 @@ from typing import Union, List
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.ops import math_ops, array_ops
-from tensorflow.python.util import tf_decorator
 from tensorflow.python.framework import ops
+from tensorflow.python.ops import math_ops, array_ops
+from tensorflow.python.util import tf_decorator, dispatch
 
 NoneType = type(None)
 
@@ -411,6 +411,14 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
 #######################
 
 
+def _fill_nan_risk(x, value):
+    """Fills empty elements of a ``RiskTensor`` (the risk
+    estimates that are ``None``) with the provided values.
+    """
+    op = lambda y: tf.fill(x.shape, value) if y == None else "keep"
+    return x.replace_risk(op(x.aleatoric), op(x.epistemic), op(x.bias))
+
+
 def _is_risk(risk_tens):
     is_aleatoric = not isinstance(risk_tens.aleatoric, NoneType)
     is_epistemic = not isinstance(risk_tens.epistemic, NoneType)
@@ -440,6 +448,7 @@ def base_x(api, x):
     which implements one base function and reuses it for multiple different apis.
     """
     is_aleatoric, is_epistemic, is_bias = _is_risk(x)
+
     return RiskTensor(
         api(x.y_hat),
         api(x.aleatoric) if is_aleatoric else None,
@@ -466,6 +475,49 @@ def base_list_x(api, lis):
         api([i.epistemic for i in lis]) if are_all_epistemic else None,
         api([i.bias for i in lis]) if are_all_bias else None,
     )
+
+
+def base_x_y(api, x, y, is_wrap=True):
+    """
+    Convenience function used in dispatch for apis to avoid code duplication as most of them require almost
+    the same logic except for the name of the api.
+
+    The function is used for apis that operate on (i) two risk tensors, or (ii) on a risk tensor and on an object
+    of a different type (not a risk tensor). And encapsulates some logic of how an api should process these inputs.
+    """
+
+    if isinstance(x, RiskTensor) and isinstance(y, RiskTensor):
+        are_both_aleatoric, are_both_epistemic, are_both_bias = _are_all_risk([x, y])
+        y_hat = api(x.y_hat, y.y_hat)
+        aleatoric = api(x.aleatoric, y.aleatoric) if are_both_aleatoric else None
+        epistemic = api(x.epistemic, y.epistemic) if are_both_epistemic else None
+        bias = api(x.bias, y.bias) if are_both_bias else None
+
+    elif isinstance(x, RiskTensor) or isinstance(y, RiskTensor):
+        x = x.y_hat if isinstance(x, RiskTensor) else x
+        y = y.y_hat if isinstance(y, RiskTensor) else y
+        y_hat, aleatoric, epistemic, bias = api(x, y), None, None, None
+
+    else:
+        # This function (base_x_y) is called by our modified dispatchers, a single dispatcher
+        # is implemented to expect all relevant combinations of input types, following
+        # https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/ragged/ragged_dispatch.py#L36-L78
+        # So this function gets called by another function which expects
+        # x: Union[RiskTensor, tf.Tensor, np.ndarray, ...], y: Union[RiskTensor, tf.Tensor, np.ndarray, ...]
+        # because apparently tf implements some mechanisms under the hood to prevent our modified dispatcher
+        # from being invoked for e.g. (array and array) or (Tensor and Tensor) - this is desirable since
+        # these cases should be handled by the dispatchers of other types e.g. Tensor's (not RiskTensor's).
+        # Here we just take an extra precaution and rase the error if this dispatcher gets invoked for
+        # non RiskTensor inputs.
+        raise ValueError(
+            f"Expected at least one of the inputs to be a RiskTensor, saw {type(x), type(y)}"
+        )
+
+    if is_wrap:
+        # wrap into a risk tensor
+        return RiskTensor(y_hat, aleatoric, epistemic, bias)
+    else:
+        return None
 
 
 ##########################
@@ -520,35 +572,7 @@ def binary_elementwise_op_handler(op, x, y):
     The reasoning behind such a design choice is that e.g. ``tf.Tensor`` simply doesn't have the
     risk elements to perform a binary operation on.
     """
-    if isinstance(x, RiskTensor) and isinstance(y, RiskTensor):
-        are_both_aleatoric, are_both_epistemic, are_both_bias = _are_all_risk([x, y])
-        return RiskTensor(
-            op(x.y_hat, y.y_hat),
-            op(x.aleatoric, y.aleatoric) if are_both_aleatoric else None,
-            op(x.epistemic, y.epistemic) if are_both_epistemic else None,
-            op(x.bias, y.bias) if are_both_bias else None,
-        )
-    # without tf.cast will give an err as under the hood only y gets converted to the x's dtype and not the other way around
-    # https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/ops/math_ops.py#L3999-L4000
-    # also described here "Limitation: this Op only broadcasts the dense side to the sparse side, but not the other direction."
-    # https://www.tensorflow.org/api_docs/python/tf/sparse/SparseTensor#__div__
-    # >>> t = tf.convert_to_tensor(np.random.rand(2, 2))
-    # >>> tf.add(t, 1) # works
-    # >>> tf.add(1, t) # error
-    elif isinstance(x, RiskTensor):
-        return RiskTensor(op(x.y_hat, y), None, None, None)
-    elif isinstance(y, RiskTensor):
-        x = tf.cast(x, y.dtype)
-        return RiskTensor(op(x, y.y_hat), None, None, None)
-    else:
-        # Implemented all possible combinations of input types for dispatch_for_binary_elementwise_apis into this single func, following
-        # https://github.com/tensorflow/tensorflow/blob/v2.10.0/tensorflow/python/ops/ragged/ragged_dispatch.py#L36-L78
-        # So we do Union[risk_tens, np.arr, tf.Tensor, ...], Union[risk_tens, np.arr, tf.Tensor, ...] because apparently tf implements
-        # some mechanisms under the hood to prevent this dispatcher being invoked for e.g., (array and array) or (Tensor and Tensor)
-        # here we just take an extra precaution and rase err if this dispatcher gets invoked for non RiskTensor inputs.
-        raise ValueError(
-            f"expected at least one of the inputs to be RiskTensor, saw {type(x), type(y)}"
-        )
+    return base_x_y(op, x, y)
 
 
 ####################
@@ -650,28 +674,74 @@ def risk_add_n(inputs: List[RiskTensor], name=None):
     return base_list_x(api, inputs)
 
 
-# @tf.experimental.dispatch_for_api(tf.debugging.assert_equal)
-# def risk_assert_equal(
-#     x: RiskTensor, y: RiskTensor, message=None, summarize=None, name=None
-# ):
-#     # print("capsa.RiskTensor and capsa.RiskTensor")
-#     are_both_aleatoric, are_both_epistemic, are_both_bias = _are_all_risk([x, y])
+### operate on two of risk tensors
 
-#     return RiskTensor(
-#         tf.debugging.assert_equal(x.y_hat, y.y_hat),
-#         tf.debugging.assert_equal(x.aleatoric, y.aleatoric) if are_both_aleatoric else None,
-#         tf.debugging.assert_equal(x.epistemic, y.epistemic) if are_both_epistemic else None,
-#         tf.debugging.assert_equal(x.bias, y.bias) if are_both_bias else None,
-#     )
 
-# The dispatch decorators are used to override the default behavior of several TensorFlow APIs.
-# Since these APIs are used by standard Keras layers (such as the Dense layer), overriding these will
-# allow us to use those layers with RiskTensor. For now, matmul for risk tensors is defined to treat
-# the risk values as zeros (that is, to not include them in the product).
+@tf.experimental.dispatch_for_api(tf.where)
+def risk_where(
+    condition: Union[RiskTensor, tf.Tensor, np.ndarray, int, float],
+    x: Union[RiskTensor, tf.Tensor, np.ndarray, int, float],
+    y: Union[RiskTensor, tf.Tensor, np.ndarray, int, float],
+    name=None,
+):
+    """Specifies how ``tf.where`` should process ``RiskTensor`` values."""
+    condition = condition.y_hat if isinstance(condition, RiskTensor) else condition
+    op = lambda x, y: tf.where(condition, x, y, name)
+    return base_x_y(op, x, y)
+
+
+@tf.experimental.dispatch_for_api(tf.debugging.assert_near)
+def risk_assert_near(
+    x: Union[RiskTensor, tf.Tensor, np.ndarray, int, float],
+    y: Union[RiskTensor, tf.Tensor, np.ndarray, int, float],
+    rtol=None,
+    atol=None,
+    message=None,
+    summarize=None,
+    name=None,
+):
+    """Specifies how ``tf.debugging.assert_near`` should process ``RiskTensor`` values."""
+
+    # account for the fact that tf.debugging.assert_near(<RiskTensor: risk=(aleatoric,)>,
+    # <RiskTensor: risk=(None)>) should fail. So the logic of are_both_aleatoric, are_both_epistemic, ...
+    # does not work here -- if we're running this op on two risk tensors and one of them doesn't have
+    # e.g. aleatoric uncertainty, we can't simply skip running the op on these elements of the risk tensors.
+    # But can't use this op if either x or y is None, so use -1. as a filler. Can't use np.inf as a filler,
+    # because in this case tf.debugging.assert_near(output_none, output_none) fails as well, which is not desirable.
+    x = _fill_nan_risk(x, -1.0) if isinstance(x, RiskTensor) else x
+    y = _fill_nan_risk(y, -1.0) if isinstance(y, RiskTensor) else y
+
+    op = lambda x, y: tf.debugging.assert_near(
+        x, y, rtol, atol, message, summarize, name
+    )
+    return base_x_y(op, x, y, is_wrap=False)
+
+
+@tf.experimental.dispatch_for_api(tf.debugging.assert_equal)
+def risk_assert_equal(
+    x: Union[RiskTensor, tf.Tensor, np.ndarray, int, float],
+    y: Union[RiskTensor, tf.Tensor, np.ndarray, int, float],
+    message=None,
+    summarize=None,
+    name=None,
+):
+    """Specifies how ``tf.debugging.assert_equal`` should process ``RiskTensor`` values."""
+
+    # see ``risk_assert_near`` for comments
+    x = _fill_nan_risk(x, -1.0) if isinstance(x, RiskTensor) else x
+    y = _fill_nan_risk(y, -1.0) if isinstance(y, RiskTensor) else y
+
+    op = lambda x, y: tf.debugging.assert_equal(x, y, message, summarize, name)
+    return base_x_y(op, x, y, is_wrap=False)
+
+
+### nn related
+
+
 @tf.experimental.dispatch_for_api(tf.matmul)
 def risk_matmul(
-    a: RiskTensor,
-    b,
+    a: Union[RiskTensor, tf.Tensor, tf.Variable, np.ndarray],
+    b: Union[RiskTensor, tf.Tensor, tf.Variable, np.ndarray],
     transpose_a=False,
     transpose_b=False,
     adjoint_a=False,
@@ -680,9 +750,28 @@ def risk_matmul(
     b_is_sparse=False,
     output_type=None,
 ):
-    a = a.y_hat
-    # note, returns just a.y_hat @ b, and not a RiskTensor
-    return tf.matmul(
+    """Specifies how ``tf.matmul`` should process ``RiskTensor`` values.
+
+    Since the ``tf.matmul`` API is used by standard Keras layers
+    (e.g. ``tf.keras.layers.Dense``), overriding it allows us to use
+    those layers with a ``RiskTensor``. Concretely, in the case of e.g.
+    feeding a ``RiskTensor`` to a dense layer, ``tf.matmul`` gets called
+    with a ``RiskTensor`` (input) as one argument and a ``tf.Variable``
+    (weight) as another -- thus this function gets called.
+
+    In the case described above the output is defined to not include the risk
+    values in the product. In other words, returns just e.g. ``a.y_hat @ b``,
+    and not a ``RiskTensor``. Thus, we can construct a Keras model that
+    accepts ``RiskTensor`` inputs, using standard Keras layers.
+
+    When both of the inputs to the ``tf.matmul`` are ``RiskTensor``'s
+    the corresponding elements of these tensors are matrix multiplied
+    and a new ``RiskTensor`` is returned.
+
+    See ``binary_elementwise_op_handler`` for the logic behind these design choices.
+    """
+
+    op = lambda a, b: tf.matmul(
         a,
         b,
         transpose_a,
@@ -693,3 +782,7 @@ def risk_matmul(
         b_is_sparse,
         output_type,
     )
+
+    risk_tens = base_x_y(op, a, b)
+    cond = isinstance(a, RiskTensor) and isinstance(b, RiskTensor)
+    return risk_tens if cond else risk_tens.y_hat
