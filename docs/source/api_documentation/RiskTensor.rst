@@ -4,7 +4,7 @@ RiskTensor
 =================
 
 .. note::
-  For more examples of using the ``RiskTensor`` check out: ``tests/test_risk_tensor.py``, ``MVEWrapper``, ``HistogramWrapper``, ``DropoutWrapper``, ``EnsembleWrapper``, ``VAEWrapper``.
+  For more examples of using the ``RiskTensor`` check out: ``tests/test_risk_tensor.py``, ``test_risk_tensor_nn.py``, ``MVEWrapper``, ``HistogramWrapper``, ``DropoutWrapper``, ``EnsembleWrapper``, ``VAEWrapper``.
 
 .. _api_wrapper:
 .. autoclass:: capsa.RiskTensor
@@ -35,3 +35,7 @@ RiskTensor
 .. autofunction:: risk_stack
 .. autofunction:: risk_concat
 .. autofunction:: risk_add_n
+.. autofunction:: risk_where
+.. autofunction:: risk_assert_near
+.. autofunction:: risk_assert_equal
+.. autofunction:: risk_matmul

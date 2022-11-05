@@ -10,12 +10,12 @@ NoneType = type(None)
 
 
 def _right(operator):
-    """Right-handed version of an operator: swap args x and y."""
+    """Right-handed version of an operator: swap args ``x`` and ``y``."""
     return tf_decorator.make_decorator(operator, lambda y, x: operator(x, y))
 
 
 def _dummy_bool(_):
-    """Dummy method to prevent a RiskTensor from being used as a Python bool."""
+    """Dummy method to prevent a ``RiskTensor`` from being used as a Python ``bool``."""
     raise TypeError("RiskTensor may not be used as a boolean.")
 
 
@@ -45,11 +45,10 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     (ii) all `binary elementwise operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_binary_elementwise_apis>`_;
     (iii) the following `operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_api>`_
     ``tf.math.reduce_std``, ``tf.reduce_mean``, ``tf.reduce_sum``, ``tf.stack``, ``tf.concat``, ``tf.shape``, ``tf.reshape``,
-    ``tf.size``, ``tf.transpose``, ``tf.matmul``, ``tf.convert_to_tensor``.
+    ``tf.size``, ``tf.transpose``, ``tf.matmul``, ``tf.convert_to_tensor``, ``tf.where``, ``tf.debugging.assert_near``,
+    ``tf.debugging.assert_equal``.
 
-    When working with ``RiskTensor``, if you encounter the following error
-    ``ValueError: Attempt to convert a value (RiskTensor: ...) with an unsupported type (<class
-    'capsa.risk_tensor.RiskTensor'>) to a Tensor.`` most likely the tensorflow framework under the hood
+    When working with ``RiskTensor``, if you encounter an unexpected error most likely the tensorflow framework under the hood
     tries to use one of the `tf operations <https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_api>`_
     which is not currently supported -- thus you may need to override the default behavior of the specified tf
     operation when it is called. You can use the ``@tf.experimental.dispatch_for_api`` decorator to specify
@@ -86,19 +85,6 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     # required for serialization in tf.saved_model
     __name__ = "capsa.RiskTensor"
 
-    # The default ExtensionTypeBatchEncoder that is used by BatchableExtensionType assumes
-    # and creates batchs of RiskTensor values by simply stacking individual risk tensors (y_hat, aleatoric,
-    # epistemic and bias).
-
-    y_hat: tf.Tensor
-    aleatoric: Union[tf.Tensor, None] = None
-    epistemic: Union[tf.Tensor, None] = None
-    bias: Union[tf.Tensor, None] = None
-
-    # use y_hat's shape and dtype when checking these params on an instance of the RiskTensor
-    shape = property(lambda self: self.y_hat.shape)  # TensorShape
-    dtype = property(lambda self: self.y_hat.dtype)
-
     # if we have e.g. array + risk_tensor -- from the perspective
     # of the array it should call its __add__ method, but from the
     # perspective of the risk_tensor it should call its __radd__ method.
@@ -120,6 +106,24 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     # patch https://github.com/tensorflow/tensorflow/commit/a8c3de3bddf01b4b80c986b3bb81d2a1658be3c8
     # see also https://github.com/tensorflow/tensorflow/issues/8051#issuecomment-285505805
     __array_priority__ = 100
+
+    # The default ExtensionTypeBatchEncoder that is used by BatchableExtensionType assumes
+    # and creates batchs of RiskTensor values by simply stacking individual risk tensors (y_hat, aleatoric,
+    # epistemic and bias).
+
+    y_hat: tf.Tensor
+    aleatoric: Union[tf.Tensor, None] = None
+    epistemic: Union[tf.Tensor, None] = None
+    bias: Union[tf.Tensor, None] = None
+
+    # use y_hat's shape and dtype when checking these params on an instance of the RiskTensor
+    @property
+    def shape(self):
+        return self.y_hat.shape
+
+    @property
+    def dtype(self):
+        return self.y_hat.dtype
 
     def __validate__(self):
         """
@@ -272,11 +276,10 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     __rsub__ = _right(math_ops.subtract)  # binary
     __truediv__ = math_ops.truediv  # binary
     __rtruediv__ = _right(math_ops.truediv)  # binary
-    __matmul__ = math_ops.matmul
-    __rmatmul__ = _right(math_ops.matmul)
+    __matmul__ = math_ops.matmul  # binary
+    __rmatmul__ = _right(math_ops.matmul)  # binary
 
     __bool__ = _dummy_bool
-    __nonzero__ = _dummy_bool
 
     # Equality -- no need to override as tf.extension_type already provides those
     # __eq__ = math_ops.tensor_equals
@@ -673,7 +676,7 @@ def risk_reduce_sum(input_tensor: RiskTensor, axis=None, keepdims=False, name=No
 
 @tf.experimental.dispatch_for_api(tf.transpose)
 def risk_transpose(a: RiskTensor, perm=None, conjugate=False, name="transpose"):
-    """Specifies how ``tf.transpose`` should process ``RiskTensor`` inputs."""
+    """Specifies how ``tf.transpose`` should process ``RiskTensor`` values."""
     api = lambda x: tf.transpose(x, perm, conjugate, name)
     return base_x(api, a)
 
@@ -697,7 +700,7 @@ def risk_concat(values: List[RiskTensor], axis, name="concat"):
 
 @tf.experimental.dispatch_for_api(tf.add_n)
 def risk_add_n(inputs: List[RiskTensor], name=None):
-    """Specifies how ``tf.add_n`` should process ``RiskTensor`` inputs."""
+    """Specifies how ``tf.add_n`` should process ``RiskTensor`` values."""
     api = lambda x: tf.add_n(x, name)
     return base_list_x(api, inputs)
 
