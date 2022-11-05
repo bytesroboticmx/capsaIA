@@ -1,7 +1,10 @@
+import unittest
+
 import numpy as np
 import tensorflow as tf
 
 from capsa import RiskTensor
+
 
 y_hat = np.random.randn(3, 1).astype("float32")
 aleatoric = np.random.randn(3, 1).astype("float32")
@@ -11,15 +14,13 @@ bias = np.random.randn(3, 1).astype("float32")
 output = RiskTensor(y_hat, aleatoric, epistemic, bias)
 output_none = RiskTensor(y_hat, None, None, None)
 
-# basic interface and shapes
+arr_bool = np.random.randint(low=0, high=2, size=(3, 1), dtype=bool)
+output_bool = RiskTensor(arr_bool, arr_bool, arr_bool, arr_bool)
+output_bool_none = RiskTensor(arr_bool, arr_bool, arr_bool, None)
+
+
+#### basic interface and shapes ####
 print("\n#### basic interface and shapes ####\n")
-
-# assignment will fail for a tf.Tensor -- does not support item assignment. As oppose to numpy -- in numpy it will work
-# y_hat = tf.convert_to_tensor(y_hat)
-# print(type(y_hat))
-# y_hat[:2] = 0
-# print(y_hat)
-
 
 # .__len__
 print(
@@ -77,6 +78,7 @@ print(
     "\noutput.replace_risk(new_epistemic=epistemic)\n >>>",
     output.replace_risk(new_epistemic=epistemic),
 )
+
 
 #### dispatch unary & binary ####
 # see https://www.tensorflow.org/api_docs/python/tf/experimental/dispatch_for_unary_elementwise_apis
@@ -142,6 +144,83 @@ print("\ntf.size(output_none)\n >>>", tf.size(output_none))
 print("\ntf.convert_to_tensor(output)\n >>>", tf.convert_to_tensor(output))
 print("\ntf.convert_to_tensor(output_none)\n >>>", tf.convert_to_tensor(output_none))
 
+# we've overwritten tf.reduce_all to work with capsa.RiskTensor
+print("\ntf.reduce_all(output_bool, 0)\n >>>", tf.reduce_all(output_bool, 0))
+print("\ntf.reduce_all(output_bool_none, 0)\n >>>", tf.reduce_all(output_bool_none, 0))
+
+# we've overwritten tf.add_n to work with capsa.RiskTensor
+print("\ntf.add_n([output, output])\n >>>", tf.add_n([output, output]))
+print(
+    "\ntf.add_n([output_none, output_none])\n >>>", tf.add_n([output_none, output_none])
+)
+
+# we've overwritten tf.where to work with capsa.RiskTensor
+mask = np.random.randint(low=0, high=2, size=(output.shape), dtype=bool)
+print(
+    "\ntf.where(mask, 1.0, output)\n >>>",
+    tf.where(mask, 1.0, output),
+)
+print(
+    "\ntf.where(mask, 1.0, output_none)\n >>>",
+    tf.where(mask, 1.0, output_none),
+)
+
+# fmt: off
+# we've overwritten tf.debugging.assert_near to work with capsa.RiskTensor
+print(
+    "\ntf.debugging.assert_near(output, output)\n >>>",
+    tf.debugging.assert_near(output, output),
+)
+print(
+    "\ntf.debugging.assert_near(output_none, output_none)\n >>>",
+    tf.debugging.assert_near(output_none, output_none),
+)
+
+# https://stackoverflow.com/a/3166985
+class TestCase(unittest.TestCase):
+    def assert_raises_exception(self, output, output_none):
+        with self.assertRaises(Exception) as context:
+            tf.debugging.assert_near(output, output_none)
+        # tested successfully
+        print("\ntf.debugging.assert_near(output, output_none)\n >>> Exception")
+_ = TestCase()
+_.assert_raises_exception(output, output_none)
+
+class TestCase(unittest.TestCase):
+    def assert_raises_exception(self, output):
+        with self.assertRaises(Exception) as context:
+            # thresh is 1.2e-6, thus 1e-5 gives err
+            # https://www.tensorflow.org/api_docs/python/tf/debugging/assert_near
+            tf.debugging.assert_near(output, output - 1e-5)
+        # tested successfully
+        print("\ntf.debugging.assert_near(output, output - 1e-5)\n >>> Exception")
+_ = TestCase()
+_.assert_raises_exception(output)
+
+print(
+    "\ntf.debugging.assert_near(y_hat, y_hat - 1e-6)\n >>>",
+    tf.debugging.assert_near(y_hat, y_hat - 1e-6),
+)
+
+# we've overwritten tf.debugging.assert_equal to work with capsa.RiskTensor
+print(
+    "\ntf.debugging.assert_equal(output, output)\n >>>",
+    tf.debugging.assert_equal(output, output),
+)
+print(
+    "\ntf.debugging.assert_equal(output_none, output_none)\n >>>",
+    tf.debugging.assert_equal(output_none, output_none),
+)
+class TestCase(unittest.TestCase):
+    def assert_raises_exception(self, output, output_none):
+        with self.assertRaises(Exception) as context:
+            tf.debugging.assert_equal(output, output_none)
+        # tested successfully
+        print("\ntf.debugging.assert_equal(output, output_none)\n >>> Exception")
+_ = TestCase()
+_.assert_raises_exception(output, output_none)
+# fmt: on
+
 # init RiskTensor with a different shape
 y_hat = np.random.randn(3, 5, 2).astype("float32")
 aleatoric = np.random.randn(3, 5, 2).astype("float32")
@@ -188,17 +267,28 @@ print(
 )
 
 # we've overwritten tf.matmul to work with capsa.RiskTensor
-# print(output1 @ tf.convert_to_tensor(np.random.randn(1, 10).astype("float32")))
-# print(tf.convert_to_tensor(np.random.randn(6, 3).astype("float32")) @ output1)
+t_matmul = tf.convert_to_tensor(np.random.randn(1, 8).astype("float32"))
+print("\noutput @ t_matmul\n >>>", output @ t_matmul)
+print("\nt_matmul @ output\n >>>", t_matmul @ output)
 
-### batchable
+
+### batchable ####
 print("\n#### batchable ####\n")
 
-batch = tf.stack([output1_none, output2_none])
-dataset = tf.data.Dataset.from_tensor_slices(batch)
-
+dataset = tf.data.Dataset.from_tensor_slices(
+    tf.stack([output1_none, output2_none]),  # <RiskTensor: shape=(2, 3, 1) ...>
+)
 for i, risk_tens in enumerate(dataset):
-    print(f">>> Batch element {i}: {risk_tens}")
+    print(f">>> Batch element {i}: {risk_tens}")  # <RiskTensor: shape=(3, 1) ...>
+
+batched_dataset = dataset.batch(2)
+for i in batched_dataset:
+    print(i)
+
+unbatched_ds = batched_dataset.unbatch()
+for i in unbatched_ds:
+    print(i)
+
 
 #### operator overloading ####
 print("\n#### operator overloading ####\n")
@@ -211,42 +301,31 @@ y = RiskTensor(y_hat, aleatoric, epistemic, None)
 x_bool = RiskTensor([True, False], [True, False], [False, True], [True, True])
 y_bool = RiskTensor([True, False], [True, True], [False, False], None)
 
+# note: below we're heavily relying on tf.debugging.assert_equal, so be careful when modifying it,
+# doublecheck that everything is correct. The func below could be used together with
+# tf.debugging.assert_equal just to make sure
 
-def assert_all_equal(x, y, op=None):
-    # return tf.debugging.assert_near(x, y)
+# def assert_all_equal(x, y, op_name=None):
+#     # fill np.nan with 1.
+#     if op_name == "pow":
+#         is_nan = tf.math.is_nan(x)
+#         x = tf.where(is_nan, 1.0, x)
 
-    # if op == "pow":
-    #     ### need this because simply by initialization if we pow t1 and t2 some of the elements will be nan
-    #     # and tf returns False when comparing two nans e.g.: t = tf.convert_to_tensor(np.nan); print(tf.math.equal(t, t))
-    #     # x_ = RiskTensor([1.21, 3.12], [5.25, 6.21], [1.83, 3.15], [1.82, 5.91])
-    #     # y_ = RiskTensor([2.59, 0.53], [2.11, 2.66], [1.53, 4.27], None)
+#         is_nan = tf.math.is_nan(y)
+#         y = tf.where(is_nan, 1.0, y)
 
-    #     # fill np.nan with 1.
-    #     is_nan = tf.math.is_nan(x)
-    #     x = tf.where(is_nan, 1.0, x)
-    #     is_nan = tf.math.is_nan(y)
-    #     y = tf.where(is_nan, 1.0, y)
+#     # bool tensor
+#     bool_tens_or_bool_risktens = tf.math.equal(x, y)
+#     # all dimensions are reduced
+#     reduced = tf.reduce_all(bool_tens_or_bool_risktens)
 
-    # binary op
-    bool_tens_or_bool_risktens = tf.math.equal(x, y)  # bool tensor
-    # print(type(bool_tens_or_bool_risktens))
-
-    # api
-    # If axis is None, all dimensions are reduced, and a tensor with a single element is returned.
-    reduced = tf.math.reduce_all(bool_tens_or_bool_risktens)
-    if isinstance(reduced, RiskTensor):
-        assert (reduced.y_hat == True) or (reduced.y_hat == None), reduced.y_hat
-        assert (reduced.epistemic == True) or (
-            reduced.epistemic == None
-        ), reduced.epistemic
-        assert (reduced.aleatoric == True) or (
-            reduced.aleatoric == None
-        ), reduced.aleatoric
-    elif isinstance(reduced, tf.Tensor):
-        assert reduced == True, (x, y)
-    else:
-        print(type(reduced))
-        print(reduced)
+#     if isinstance(reduced, RiskTensor):
+#         y_hat, aleatoric, epistemic, _ = reduced.numpy()
+#         assert (y_hat == True) or np.isnan(y_hat), y_hat
+#         assert (aleatoric == True) or np.isnan(aleatoric), aleatoric
+#         assert (epistemic == True) or np.isnan(epistemic), epistemic
+#     elif isinstance(reduced, tf.Tensor):
+#         assert reduced == True, reduced
 
 
 x_rt = RiskTensor(y_hat, aleatoric, epistemic, bias)  # RiskTensor
@@ -259,193 +338,209 @@ x_int = 1  # int
 # test the operator overloading on all the variety of inputs
 for tup in [(x_rt, y_rt), (x_t, y_rt), (x_arr, y_rt), (x_float, y_rt), (x_int, y_rt)]:
     x, y = tup
+
     ### Equality
-    ###  equality operators (__eq__ and __ne__)
-    print("output1 == output1\n >>>", output1 == output1)
-    print("\noutput1 == output1_none\n >>>", output1 == output1_none)
-    print("\noutput1 != output1_none\n >>>", output1 != output1_none)
+    # __eq__ (binary)
+    tf.debugging.assert_equal(
+        tf.cast((y_rt == y_rt), tf.float32),
+        tf.cast(tf.equal(y_rt, y_rt), tf.float32),
+    )
+    # __ne__ (binary)
+    tf.debugging.assert_equal(
+        tf.cast((y_rt != y_rt), tf.float32),
+        tf.cast(tf.not_equal(y_rt, y_rt), tf.float32),
+    )
 
     ### Ordering operators
     # __ge__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         tf.cast((x >= y), tf.float32),
         tf.cast(tf.greater_equal(x, y), tf.float32),
     )
 
     # __gt__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (x > y),
         tf.greater(x, y),
     )
 
     # __le__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (x <= y),
         tf.less_equal(x, y),
     )
 
     # __lt__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (x < y),
         tf.less(x, y),
     )
 
     ### Logical operators
     # __invert__ (unary) -- operates on bool tensors
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (~x_bool),
         tf.logical_not(x_bool),
     )
 
     # __and__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (x_bool & y_bool),
         tf.logical_and(x_bool, y_bool),
     )
 
     # __rand__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (y_bool & x_bool),
         tf.logical_and(y_bool, x_bool),
     )
 
     # __or__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (x_bool | y_bool),
         tf.logical_or(x_bool, y_bool),
     )
 
     # __ror__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (y_bool | x_bool),
         tf.logical_or(y_bool, x_bool),
     )
 
     # __xor__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (x_bool ^ y_bool),
         tf.math.logical_xor(x_bool, y_bool),
     )
 
     # __rxor__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (y_bool ^ x_bool),
         tf.math.logical_xor(y_bool, x_bool),
     )
 
+    # otherwise for __abs__, __neg__: "ValueError, data type <class 'numpy.int32'> not inexact"
+    if isinstance(x, int):
+        x = float(x)
+
     ### Arithmetic operators
     # __abs__ (unary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         abs(x),
         tf.abs(x),
     )
 
     # __neg__ (unary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (-x),
         tf.negative(x),
     )
 
-    # todo-med: this gives prints for EagerTensor and RiskTensor
     # __add__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (x + y),
         tf.add(x, y),
     )
 
     # __radd__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (y + x),
         tf.add(y, x),
     )
 
     # __floordiv__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (x // y),
         tf.math.floordiv(x, y),
     )
 
     # __rfloordiv__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (y // x),
         tf.math.floordiv(y, x),
     )
 
     # __mod__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (x % y),
         tf.math.floormod(x, y),
     )
 
     # __rmod__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (y % x),
         tf.math.floormod(y, x),
     )
 
     # __mul__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (x * y),
         tf.multiply(x, y),
     )
 
     # __rmul__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (y * x),
         tf.multiply(y, x),
     )
 
-    ### need this because simply by initialization if we pow t1 and t2 some of the elements will be nan
+    # need this because simply by initialization if we pow t1 and t2 some of the elements will be nan
     # and tf returns False when comparing two nans e.g.: t = tf.convert_to_tensor(np.nan); print(tf.math.equal(t, t))
-    # x_ = RiskTensor([1.21, 3.12], [5.25, 6.21], [1.83, 3.15], [1.82, 5.91])
-    # y_ = RiskTensor([2.59, 0.53], [2.11, 2.66], [1.53, 4.27], None)
+    x_ = RiskTensor([1.21, 3.12], [5.25, 6.21], [1.83, 3.15], [1.82, 5.91])
+    y_ = RiskTensor([2.59, 0.53], [2.11, 2.66], [1.53, 4.27], None)
 
-    # # __pow__(binary)
-    # assert_all_equal(
-    #     (x**y),
-    #     tf.pow(x, y),
-    #     op="pow",
-    # )
+    # __pow__(binary)
+    tf.debugging.assert_equal(
+        (x_**y_),
+        tf.pow(x_, y_),
+    )
 
-    # # __rpow__ (binary)
-    # assert_all_equal(
-    #     (y**x),
-    #     tf.pow(y, x),
-    #     op="pow",
-    # )
+    # __rpow__ (binary)
+    tf.debugging.assert_equal(
+        (y_**x_),
+        tf.pow(y_, x_),
+    )
 
     # __sub__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (x - y),
         tf.subtract(x, y),
     )
 
     # __rsub__ (binary)
-    assert_all_equal(
+    tf.debugging.assert_equal(
         (y - x),
         tf.subtract(y, x),
     )
 
-    # # __truediv__ (binary)
-    # assert_all_equal(
-    #     (x / y),
-    #     tf.truediv(x, y),
-    # )
+    # __truediv__ (binary)
+    tf.debugging.assert_equal(
+        (x / y),
+        tf.truediv(x, y),
+    )
 
-    # # __rtruediv__ (binary)
-    # assert_all_equal(
-    #     (y / x),
-    #     tf.truediv(y, x),
-    # )
+    # __rtruediv__ (binary)
+    tf.debugging.assert_equal(
+        (y / x),
+        tf.truediv(y, x),
+    )
 
-    # __bool__ = _dummy_bool
-    # __nonzero__ = _dummy_bool
+    # __bool__
+    class TestCase(unittest.TestCase):
+        def assert_raises_exception(self, y):
+            with self.assertRaises(Exception) as context:
+                bool(y)
+            # tested successfully
+            # print("\nbool(y)\n >>> Exception")
 
-    print(f"\n30 operator overloading tests have passed! for {type(x)} and {type(y)}")
+    _ = TestCase()
+    _.assert_raises_exception(y)
 
-######################
+    print(f"\n~30 operator overloading tests have passed! for {type(x)} and {type(y)}")
 
-### indexing -- adopted from here https://www.tensorflow.org/api_docs/python/tf/Tensor#some_useful_examples_2
+
+#### indexing ####
+# adopted from https://www.tensorflow.org/api_docs/python/tf/Tensor#some_useful_examples_2
 
 # Strip leading and trailing 2 elements
 rt = RiskTensor(
@@ -498,3 +593,10 @@ tf.debugging.assert_equal(rt[tf.newaxis].y_hat, expected)
 rt = RiskTensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
 expected = tf.convert_to_tensor([3, 4, 5, 6, 7, 8, 9])
 tf.debugging.assert_equal(rt[(rt > 2).y_hat].y_hat, expected)
+
+# Assignment will fail for a tf.Tensor -- does not support item assignment.
+# As oppose to numpy -- in numpy it will work
+# y_hat = tf.convert_to_tensor(y_hat)
+# print(type(y_hat))
+# y_hat[:2] = 0
+# print(y_hat)
