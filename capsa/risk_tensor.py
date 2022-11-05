@@ -416,11 +416,22 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         # supports TypeSpecs that have a shape field; got MaskedTensor.Spec, which does not have a shape.``
         # To customize the TypeSpec, we define our own class named Spec, and ``ExtensionType`` will use that
         # as the basis for the automatically constructed TypeSpec.
-        def __init__(self, y_hat, dtype=tf.float32):
+        def __init__(self, shape, dtype=tf.float32):
             self.y_hat = tf.TensorSpec(shape, dtype)
 
-        shape = property(lambda self: self.y_hat.shape)
-        dtype = property(lambda self: self.y_hat.dtype)
+        @property
+        def shape(self):
+            return self.y_hat.shape
+
+        @property
+        def dtype(self):
+            return self.y_hat.dtype
+
+        # Keras requires TypeSpec to have a `with_shape` method that returns a copy of `self` with an updated shape.
+        def with_shape(self, shape):
+            return RiskTensor.Spec(
+                shape,
+            )
 
 
 #######################
