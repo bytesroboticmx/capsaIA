@@ -282,7 +282,7 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
     # __eq__ = math_ops.tensor_equals
     # __ne__ = math_ops.tensor_not_equals
 
-    def replace_risk(self, new_aleatoric=None, new_epistemic=None, new_bias=None):
+    def replace_risk(self, new_aleatoric="keep", new_epistemic="keep", new_bias="keep"):
         """
         In TensorFlow all ``tf.Tensors`` are immutable: you can never update the contents
         of a tensor, only create a new one `reference <https://www.tensorflow.org/guide/tensor>`_.
@@ -291,7 +291,7 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         In other words, normal ``tf.Tensor`` objects are immutable. To store model weights (or other mutable
         state) ``tf.Variable`` is used `reference <https://www.tensorflow.org/guide/basics#variables>`_.
 
-        Note: similarly, `tf.extension_type <https://www.tensorflow.org/guide/extension_type>`_ and therefore
+        Similarly, `tf.extension_type <https://www.tensorflow.org/guide/extension_type>`_ and therefore
         an instance of a ``RiskTensor`` is `immutable <https://www.tensorflow.org/guide/extension_type#mutability>`_.
         Because ``tf.ExtensionType`` overrides the ``__setattr__`` and ``__delattr__`` methods to prevent mutation.
         This ensures that they can be properly tracked by TensorFlow's graph-tracing mechanisms.
@@ -302,13 +302,16 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         `implementation <https://github.com/tensorflow/tensorflow/blob/359c3cdfc5fabac82b3c70b3b6de2b0a8c16874f/tensorflow/python/framework/sparse_tensor.py#L177-L200>`_
         of the ``tf.SparseTensor``.
 
+        Note: If a value e.g. for the ``new_epistemic`` argument is not provided to replace ``RiskTensor``'s
+        epistemic estimate, the current epistemic estimate will be kept.
+
         Parameters
         ----------
-        new_aleatoric : tf.Tensor, default None
+        new_aleatoric : tf.Tensor, default str
             New aleatoric estimate.
-        new_epistemic : tf.Tensor, default None
+        new_epistemic : tf.Tensor, default str
             New epistemic estimate.
-        new_bias : tf.Tensor, default None
+        new_bias : tf.Tensor, default str
             New bias estimate.
 
         Returns
@@ -316,7 +319,21 @@ class RiskTensor(tf.experimental.BatchableExtensionType):
         out : capsa.RiskTensor
             New risk aware tensor, contains old ``y_hat`` and new risk estimates.
         """
-        return RiskTensor(self.y_hat, new_aleatoric, new_epistemic, new_bias)
+        # Assumes that isinstance(x, str) means "keep", this is reasonable
+        # because risk tensor only expects tf.Tensor or None anyway.
+        # Alternatively, ``is not "keep"`` also works, but gets SyntaxWarning.
+
+        # Also, in the ExtensionType's constructor, Tensor fields
+        # are converted using tf.convert_to_tensor. So we don't need
+        # to convert to tensor explicitly here.
+
+        op = lambda x, y: x if not isinstance(x, str) else y
+        return RiskTensor(
+            self.y_hat,
+            op(new_aleatoric, self.aleatoric),
+            op(new_epistemic, self.epistemic),
+            op(new_bias, self.bias),
+        )
 
     def ndim(self):
         """
