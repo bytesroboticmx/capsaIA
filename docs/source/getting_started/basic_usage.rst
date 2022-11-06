@@ -33,7 +33,7 @@ What did we do?
  
 
 ``MetricWrapper()``
------------
+-------------------
 
 As we have seen, wrapping a Tensorflow model with a MetricWrapper is as simple as initializing the said wrapper and passing our own original model. Metric Wrappers are designed to dissect your model and training parameters and abstract away all of the architecture changes, loss modifications so you don't need to change any of that!
 
@@ -45,10 +45,22 @@ Wrapper Model Output
 
     output = wrapped_model(sample)
 
-    print(output[0]) #Prints bias wrapper prediction for the sample
-    print(output[1]) #Prints bias wrapper risk metric for the sample
+    print(output.y_hat) #Prints Ensemble Wrapper prediction for the sample
+    print(output.epistemic) #Prints Ensemble Wrapper risk metric for the sample
 
-Each **Metric Wrapper** output is a tuple of prediction and risk metric. Therefore, we can simply index the output of our model to get the prediction and risk metric separately for a given sample.
+Each **Metric Wrapper** output is a RiskTensor object. The RiskTensor object contains the following attributes: 
+
+``y_hat``: The prediction of the model for the sample. 
+
+``aleatoric``: The aleatoric uncertainty of the model for the sample. 
+
+``epistemic``: The epistemic uncertainty of the model for the sample. 
+
+``bias``: The representation bias of the model for the sample.
+
+Since we used ``EnsembleWrapper()`` in our example, which is a wrapper that measures epistemic uncertainty, we can access the risk metric of the model for the sample by calling ``output.epistemic``.
+
+
 
  
 

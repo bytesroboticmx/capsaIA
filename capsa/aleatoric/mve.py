@@ -81,7 +81,6 @@ class MVEWrapper(BaseWrapper):
         
         if(self.out_layer.units > 1):
             self.is_multi_class = True
-            #print("Warning: MVEWrapper is not designed for multi-class classification.")
 
     def loss_fn(self, x, y, features=None):
         """
