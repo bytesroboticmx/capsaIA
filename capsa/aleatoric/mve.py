@@ -11,15 +11,14 @@ def neg_log_likelihood(y, mu, logvar):
     loss = logvar + (y - mu) ** 2 / variance
     return tf.reduce_mean(loss)
 
-class Sampling(keras.layers.Layer):
-    """Uses (z_mean, z_log_var) to sample z"""
 
-    def call(self, inputs):
-        z_mean, z_log_var = inputs
-        batch = tf.shape(z_mean)[0]
-        dim = tf.shape(z_mean)[1]
-        epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
-        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
+def sampling(z_mean, z_log_var):
+    print(z_mean.shape)
+
+    batch = tf.shape(z_mean)[0]
+    dim = tf.shape(z_mean)[1]
+    epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
+    return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
 
 
@@ -79,6 +78,11 @@ class MVEWrapper(BaseWrapper):
         self.out_mu = copy_layer(self.out_layer, override_activation="linear")
         self.out_logvar = copy_layer(self.out_layer, override_activation="linear")
 
+        
+        if(self.out_layer.units > 1):
+            self.is_multi_class = True
+            #print("Warning: MVEWrapper is not designed for multi-class classification.")
+
     def loss_fn(self, x, y, features=None):
         """
         Parameters
@@ -100,7 +104,14 @@ class MVEWrapper(BaseWrapper):
             Predicted label.
         """
         y_hat, mu, logvar = self(x, training=True, features=features)
-        loss = neg_log_likelihood(y, mu, logvar)
+
+        if not self.is_multi_class:
+            loss = neg_log_likelihood(y, mu, logvar)
+        else:
+            sampled_z = sampling(mu, logvar)
+            sampled_y_hat = tf.nn.softmax(sampled_z)
+            loss = tf.keras.losses.CategoricalCrossentropy()(y, sampled_y_hat)
+
         return loss, y_hat
 
     def call(self, x, training=False, return_risk=True, features=None):
@@ -129,6 +140,7 @@ class MVEWrapper(BaseWrapper):
             features = self.feature_extractor(x, training)
         y_hat = self.out_layer(features)
 
+        
         if not return_risk:
             return RiskTensor(y_hat)
         else:
