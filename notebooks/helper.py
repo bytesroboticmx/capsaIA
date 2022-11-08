@@ -159,3 +159,29 @@ def gen_data_mve_regression(batch_size=256, is_show=True):
 
     # return x, y, x_val, y_val as well to test models on both batched and not batched inputs
     return ds_train, ds_val, x, y, x_val, y_val
+
+
+def plot_mve_classification(output,mesh_grid,x_test,y_test):
+    
+    
+    plt.figure(figsize=(8,4))
+    plt.xlim(-1.5, 2.5); plt.ylim(-1, 1.5)
+    i = y_test == 0
+    plt.scatter(x_test[i,0][::20], x_test[i,1][::20], s=10, alpha=0.5, c="b",zorder=-1)
+    plt.scatter(x_test[~i,0][::20], x_test[~i,1][::20], s=10, alpha=0.5, c='#d62728', zorder=-1)
+
+    plt.scatter(mesh_grid[:,0],mesh_grid[:,1],c=output.aleatoric[:,1],zorder=-2)
+
+def generate_model_mve_classification():
+    model = tf.keras.Sequential(
+        [
+            tf.keras.Input(shape=(2,)),
+            tf.keras.layers.Dense(8, "relu"),
+            tf.keras.layers.Dense(8, "relu"),
+            tf.keras.layers.Dense(8, "relu"),
+            tf.keras.layers.Dense(8, "relu"),
+            tf.keras.layers.Dense(2,"softmax"),
+        ]
+        )
+
+    return model
