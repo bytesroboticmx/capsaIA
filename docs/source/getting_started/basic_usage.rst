@@ -30,7 +30,41 @@ What did we do?
 2. We initialized the ``EnsembleWrapper()`` class. We passed our Tensorflow model. We also passed the arguments ``num_members=5``. This means we want to wrap our original model with an ensemble of 5 models.
 3. We compiled the wrapped model using the same loss, optimizer and metrics that we would use on our original_model -- nothing changes! Our wrapped model takes care of the metric-specific loss and optimization changes so you don't need to.
 4. We started the training process by calling the ``fit()`` method on our wrapped model. This is the same as calling the ``fit()`` method on our ``original_model``.
- 
+
+Since we can treat our wrapped model as a normal Tensorflow Graph, we can also use custom training loops on our MetricWrapper:
+
+.. code-block:: python
+
+    wrapped_model = EnsembleWrapper(original_model,num_members=5)
+
+    epochs = 2
+    for epoch in range(epochs):
+        print("\nStart of epoch %d" % (epoch,))
+
+        # Iterate over the batches of the dataset.
+        for step, (x_batch_train, y_batch_train) in enumerate(train_dataset):
+
+            # Open a GradientTape to record the operations run
+            # during the forward pass, which enables auto-differentiation.
+            with tf.GradientTape() as tape:
+
+                # Run the forward pass of the layer.
+                # The operations that the layer applies
+                # to its inputs are going to be recorded
+                # on the GradientTape.
+                logits = wrapped_model(x_batch_train, training=True)  # Logits for this minibatch
+
+                # Compute the loss value for this minibatch.
+                loss_value = wrapped_model.loss_fn(y_batch_train, logits)
+
+            # Use the gradient tape to automatically retrieve
+            # the gradients of the trainable variables with respect to the loss.
+            grads = tape.gradient(loss_value, wrapped_model.trainable_weights)
+
+            # Run one step of gradient descent by updating
+            # the value of the variables to minimize the loss.
+            optimizer.apply_gradients(zip(grads, wrapped_model.trainable_weights))
+
 
 ``MetricWrapper()``
 -------------------
