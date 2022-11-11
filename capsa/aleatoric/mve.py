@@ -53,7 +53,7 @@ class MVEWrapper(BaseWrapper):
         >>> model.fit(...)
     """
 
-    def __init__(self, base_model, is_standalone=True):
+    def __init__(self, base_model,is_classification, is_standalone=True):
         """
         Parameters
         ----------
@@ -61,6 +61,8 @@ class MVEWrapper(BaseWrapper):
             A model to be transformed into a risk-aware variant.
         is_standalone : bool, default True
             Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``.
+        is_classification : bool
+            Indicates whether or not the model is a classification model. If ``True``, the model do mean variance estimation via reparametrization trick.
 
         Attributes
         ----------
@@ -70,6 +72,8 @@ class MVEWrapper(BaseWrapper):
             Used to predict mean.
         out_logvar : tf.keras.layers.Layer
             Used to predict variance.
+        is_classification : bool
+            Indicates whether model is a classification model.
         """
         super(MVEWrapper, self).__init__(base_model, is_standalone)
 
@@ -77,9 +81,7 @@ class MVEWrapper(BaseWrapper):
         self.out_mu = copy_layer(self.out_layer, override_activation="linear")
         self.out_logvar = copy_layer(self.out_layer, override_activation="linear")
 
-        
-        if(self.out_layer.units > 1):
-            self.is_multi_class = True
+        self.is_classification = is_classification
 
     def loss_fn(self, x, y, features=None):
         """
@@ -103,7 +105,7 @@ class MVEWrapper(BaseWrapper):
         """
         y_hat, mu, logvar = self(x, training=True, features=features)
 
-        if not self.is_multi_class:
+        if not self.is_classification:
             loss = neg_log_likelihood(y, mu, logvar)
         else:
             sampled_z = sampling(mu, logvar)
