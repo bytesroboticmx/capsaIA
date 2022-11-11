@@ -13,7 +13,6 @@ def neg_log_likelihood(y, mu, logvar):
 
 
 def sampling(z_mean, z_log_var):
-    print(z_mean.shape)
 
     batch = tf.shape(z_mean)[0]
     dim = tf.shape(z_mean)[1]
