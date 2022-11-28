@@ -101,6 +101,7 @@ class HistogramWrapper(BaseWrapper):
             features = self.metric_wrapper.input_to_histogram(x, training=False)
 
         y_hat = self.out_layer(features)
+
         bias = self.histogram_layer(features, training=False)
 
         return y_hat, bias
@@ -186,3 +187,5 @@ class HistogramLayer(tf.keras.layers.Layer):
         self.maximums.assign(tf.zeros(self.feature_dim))
 
         self.frequencies.assign(tf.zeros((self.num_bins, self.feature_dim[-1])))
+
+

@@ -15,7 +15,7 @@ def test_regression(use_case):
 
     # user can interact with a MetricWrapper directly
     if use_case == 1:
-        model = MVEWrapper(user_model)
+        model = MVEWrapper(user_model,is_classification=False)
 
         model.compile(
             optimizer=keras.optimizers.Adam(learning_rate=2e-3),

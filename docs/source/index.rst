@@ -7,12 +7,15 @@ Capsa Documentation
 ===================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
  
-   Introduction <introduction/index.rst>
-   Getting Started <getting_started/index.rst>
-   Tutorials <tutorials/index.rst>
-   API Documentation <api_documentation/index.rst>
+   👋 Introduction <introduction/index.rst>
+   💾 Installation <getting_started/installation.rst>
+   ⭐️ Risk Metrics <risk_metrics/index.rst>
+   🎬 Basic Usage <getting_started/basic_usage.rst>
+   👩‍🏫 Tutorials <tutorials/index.rst>
+   🐱‍💻 Metric Wrapper API <api_documentation/index.rst>
+   🧿 Contribute <contribute/index.rst>
 
 
 .. `capsa <https://github.com/themis-ai/capsa>`_ **is a data- and model-agnostic neural network wrapper for risk-aware ML workflows.**
@@ -26,42 +29,8 @@ Capsa Documentation
 :abbr:`Capsa ((noun): latin root for a capsule or container.)` automatically wraps ML workflows to achieve risk-aware learning and deployment.
 
 
-.. image:: out.png
+.. image:: themis-light.png
+    :class: only-light
 
-
-Quickstart
-==========
-
-1. Install ``capsa``
------------------------
-
-.. tabs::
-
-   .. tab:: pip
-
-      .. code-block:: bash
-
-         pip install capsa
-
-   .. tab:: conda
-
-      .. code-block:: bash
-
-         conda install -c themisai capsa
-
-   .. tab:: source
-
-      .. code-block:: bash
-
-         pip install git+https://github.com/themisai/capsa.git
-
-
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+.. image:: themis-dark.png
+    :class: only-dark

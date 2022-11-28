@@ -12,6 +12,15 @@ def neg_log_likelihood(y, mu, logvar):
     return tf.reduce_mean(loss)
 
 
+def sampling(z_mean, z_log_var):
+
+    batch = tf.shape(z_mean)[0]
+    dim = tf.shape(z_mean)[1]
+    epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
+    return z_mean + tf.exp(0.5 * z_log_var) * epsilon
+
+
+
 class MVEWrapper(BaseWrapper):
     """Mean and Variance Estimation (Nix & Weigend, 1994). This metric
     wrapper models aleatoric uncertainty.
@@ -44,7 +53,7 @@ class MVEWrapper(BaseWrapper):
         >>> model.fit(...)
     """
 
-    def __init__(self, base_model, is_standalone=True):
+    def __init__(self, base_model,is_classification, is_standalone=True):
         """
         Parameters
         ----------
@@ -52,6 +61,8 @@ class MVEWrapper(BaseWrapper):
             A model to be transformed into a risk-aware variant.
         is_standalone : bool, default True
             Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``.
+        is_classification : bool
+            Indicates whether or not the model is a classification model. If ``True``, the model do mean variance estimation via reparametrization trick.
 
         Attributes
         ----------
@@ -61,12 +72,16 @@ class MVEWrapper(BaseWrapper):
             Used to predict mean.
         out_logvar : tf.keras.layers.Layer
             Used to predict variance.
+        is_classification : bool
+            Indicates whether model is a classification model.
         """
         super(MVEWrapper, self).__init__(base_model, is_standalone)
 
         self.metric_name = "mve"
         self.out_mu = copy_layer(self.out_layer, override_activation="linear")
         self.out_logvar = copy_layer(self.out_layer, override_activation="linear")
+
+        self.is_classification = is_classification
 
     def loss_fn(self, x, y, features=None):
         """
@@ -89,7 +104,14 @@ class MVEWrapper(BaseWrapper):
             Predicted label.
         """
         y_hat, mu, logvar = self(x, training=True, features=features)
-        loss = neg_log_likelihood(y, mu, logvar)
+
+        if not self.is_classification:
+            loss = neg_log_likelihood(y, mu, logvar)
+        else:
+            sampled_z = sampling(mu, logvar)
+            sampled_y_hat = tf.nn.softmax(sampled_z)
+            loss = tf.keras.losses.CategoricalCrossentropy()(y, sampled_y_hat)
+
         return loss, y_hat
 
     def call(self, x, training=False, return_risk=True, features=None):
@@ -118,6 +140,7 @@ class MVEWrapper(BaseWrapper):
             features = self.feature_extractor(x, training)
         y_hat = self.out_layer(features)
 
+        
         if not return_risk:
             return RiskTensor(y_hat)
         else:
@@ -129,3 +152,4 @@ class MVEWrapper(BaseWrapper):
             else:
                 mu = self.out_mu(features)
                 return y_hat, mu, logvar
+
