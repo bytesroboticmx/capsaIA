@@ -20,7 +20,6 @@ def sampling(z_mean, z_log_var):
     return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
 
-
 class MVEWrapper(BaseWrapper):
     """Mean and Variance Estimation (Nix & Weigend, 1994). This metric
     wrapper models aleatoric uncertainty.
@@ -53,7 +52,7 @@ class MVEWrapper(BaseWrapper):
         >>> model.fit(...)
     """
 
-    def __init__(self, base_model,is_classification, is_standalone=True):
+    def __init__(self, base_model, is_standalone=True, is_classification=False):
         """
         Parameters
         ----------
@@ -62,7 +61,8 @@ class MVEWrapper(BaseWrapper):
         is_standalone : bool, default True
             Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``.
         is_classification : bool
-            Indicates whether or not the model is a classification model. If ``True``, the model do mean variance estimation via reparametrization trick.
+            Indicates whether or not the model is a classification model. If ``True``, do mean
+            variance estimation via the reparametrization trick.
 
         Attributes
         ----------
@@ -80,7 +80,6 @@ class MVEWrapper(BaseWrapper):
         self.metric_name = "mve"
         self.out_mu = copy_layer(self.out_layer, override_activation="linear")
         self.out_logvar = copy_layer(self.out_layer, override_activation="linear")
-
         self.is_classification = is_classification
 
     def loss_fn(self, x, y, features=None):

@@ -57,8 +57,13 @@ class DropoutWrapper(BaseWrapper):
         super(DropoutWrapper, self).__init__(base_model, is_standalone)
 
         self.metric_name = "dropout"
-        self.is_standalone = is_standalone
         self.new_model = add_dropout(base_model, p)
+
+        if not self.is_standalone:
+            raise NotImplementedError(
+                """Using ``DropoutWrapper`` inside the ``ControllerWrapper``
+                is not currently supported."""
+            )
 
     def loss_fn(self, x, y, features=None):
         """
@@ -125,6 +130,9 @@ class DropoutWrapper(BaseWrapper):
 
 
 def add_dropout(model, p):
+    """Adds dropout layers after dense layers (or spatial dropout
+    layers after conv layers)."""
+
     inputs = model.layers[0].input
 
     for i in range(len(model.layers)):

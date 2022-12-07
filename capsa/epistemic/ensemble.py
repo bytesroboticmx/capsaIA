@@ -36,7 +36,7 @@ class EnsembleWrapper(BaseWrapper):
     """
 
     def __init__(
-        self, base_model, is_standalone=True, metric_wrapper=None, num_members=1
+        self, base_model, is_standalone=True, metric_wrapper=None, num_members=3
     ):
         """
         Parameters
@@ -62,12 +62,21 @@ class EnsembleWrapper(BaseWrapper):
         super(EnsembleWrapper, self).__init__(base_model, is_standalone)
 
         self.metric_name = "ensemble"
-        self.is_standalone = is_standalone
-        self.base_model = base_model
-
         self.metric_wrapper = metric_wrapper
         self.num_members = num_members
         self.metrics_compiled = {}
+
+        if self.metric_wrapper == None and not is_standalone:
+            # need to modify user_model's train_step to return
+            # grad wrt to the input in addition to the keras_metric.
+            # doing it right here is not a clean/general solution,
+            # a better solution is to create a separate thin
+            # wrapper to wrap a user_model before using it in our
+            # metric wrappers, and implement that logic there
+            raise NotImplementedError(
+                """Wrapping a ``base_model`` with the ``EnsembleWrapper``
+                inside the ``ControllerWrapper`` is not currently supported."""
+            )
 
     def compile(self, optimizer, loss, metrics=None):
         """
@@ -88,11 +97,15 @@ class EnsembleWrapper(BaseWrapper):
         loss = [loss] if not isinstance(loss, list) else loss
         metrics = [metrics] if not isinstance(metrics, list) else metrics
 
-        if len(optimizer) or len(loss) < self.num_members:
+        # if user passes only 1 optimizer or loss_fn yet they specified e.g. num_members=3,
+        # duplicate that one optimizer and loss_fn for all members in the ensemble
+        if len(optimizer) < self.num_members:
             optim_conf = optim.serialize(optimizer[0])
             optimizer = [optim.deserialize(optim_conf) for _ in range(self.num_members)]
-            # losses and *most* keras metrics are stateless, no need to serialize as above
+        # losses and *most* keras metrics are stateless, no need to serialize as above
+        if len(loss) < self.num_members:
             loss = [loss[0] for _ in range(self.num_members)]
+        if len(metrics) < self.num_members:
             metrics = [metrics[0] for _ in range(self.num_members)]
 
         base_model_config = self.base_model.get_config()
@@ -165,15 +178,20 @@ class EnsembleWrapper(BaseWrapper):
 
             # ensembling user model
             if self.metric_wrapper is None:
-                _ = wrapper.train_step(data)
-                for m in wrapper.metrics:
-                    keras_metrics[f"{name}_{m.name}"] = m.result()
+                # outside of controller wrapper
+                if self.is_standalone:
+                    _ = wrapper.train_step(data)
+                    for m in wrapper.metrics:
+                        keras_metrics[f"{name}_{m.name}"] = m.result()
+                # within controller wrapper
+                else:
+                    raise NotImplementedError
 
-            # ensembling one of our metrics
+            # ensembling one of our metric wrappers
             else:
                 # outside of controller wrapper
                 if self.is_standalone:
-                    keras_metric = wrapper.train_step(data, features, name)
+                    keras_metric = wrapper.train_step(data, prefix=name)
                 # within controller wrapper
                 else:
                     keras_metric, grad = wrapper.train_step(

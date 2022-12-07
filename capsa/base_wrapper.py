@@ -70,9 +70,15 @@ class BaseWrapper(keras.Model):
     @tf.function
     def train_step(self, data, features=None, prefix=None):
         """
-        Note: adds the compiled loss such that the models that subclass this class don't need to explicitly add it.
+        Adds the compiled loss such that the models that subclass this class don't need to explicitly add it.
         Thus the ``metric_loss`` returned from such a model is not expected to reflect the compiled
         (user specified) loss -- because it is added here.
+
+        Note: This method could be overwritten in subclasses, but the rule of thumb is to try to avoid
+        overwriting it unless it's absolutely necessary, as e.g. in the ``EnsembleWrapper`` (functionality
+        of that wrapper cannot be achieved without overwriting ``BaseWrapper``'s ``train_step``). But in general,
+        try to only overwrite ``BaseWrapper``'s ``loss_fn`` and ``call`` methods -- in most of the cases it
+        should be enough.
 
         Parameters
         ----------
@@ -125,6 +131,9 @@ class BaseWrapper(keras.Model):
         """
         An empty method, raises exception to indicate that this method requires derived classes to override it.
 
+        Note: This method is used in the "train_step" and the "test_step" methods, thus this method is not
+        required to be overwritten if both the "train_step" and the "test_step" methods themselves are overwritten.
+
         Parameters
         ----------
         x : tf.Tensor
@@ -134,11 +143,12 @@ class BaseWrapper(keras.Model):
         features : tf.Tensor, default None
             Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
             is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
+
         Raises
         ------
         AttributeError
         """
-        raise NotImplementedError
+        raise NotImplementedError("Must be implemented in subclasses.")
 
     def call(self, x, training=False, return_risk=True, features=None):
         """
@@ -160,4 +170,4 @@ class BaseWrapper(keras.Model):
         ------
         AttributeError
         """
-        raise NotImplementedError
+        raise NotImplementedError("Must be implemented in subclasses.")
