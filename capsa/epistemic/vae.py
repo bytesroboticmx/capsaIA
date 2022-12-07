@@ -109,7 +109,7 @@ class VAEWrapper(BaseWrapper):
         if hasattr(self.feature_extractor, "layers"):
             self.decoder = reverse_model(self.feature_extractor, latent_dim)
         else:
-            if decoder is None:
+            if decoder == None:
                 raise ValueError(
                     "If you provide a subclassed model, \
                     the decoder must also be specified"
@@ -290,7 +290,7 @@ def reverse_layer(layer, output_shape=None):
             interpolation="bilinear",
         )
     elif layer_type in conv:
-        if output_shape is not None:
+        if output_shape != None:
             config["filters"] = output_shape[0][-1]
 
         if layer_type == layers.Conv1D:

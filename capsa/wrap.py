@@ -70,7 +70,7 @@ def wrap(model, bias=True, aleatoric=True, epistemic=True):
     for i in metric_wrappers:
         if type(i) == VAEWrapper:
             vae_exists = True
-            if hist_with_vae is not None:
+            if hist_with_vae != None:
                 hist_with_vae.metric_wrapper = i
 
     if add_vae and not (vae_exists):

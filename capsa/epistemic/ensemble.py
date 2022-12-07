@@ -124,12 +124,12 @@ class EnsembleWrapper(BaseWrapper):
 
             m = (
                 m
-                if self.metric_wrapper is None
+                if self.metric_wrapper == None
                 else self.metric_wrapper(m, self.is_standalone)
             )
             m_name = (
                 f"usermodel_{i}"
-                if self.metric_wrapper is None
+                if self.metric_wrapper == None
                 else f"{m.metric_name}_{i}"
             )
             m.compile(optimizer[i], loss[i], metrics[i])
@@ -177,7 +177,7 @@ class EnsembleWrapper(BaseWrapper):
         for name, wrapper in self.metrics_compiled.items():
 
             # ensembling user model
-            if self.metric_wrapper is None:
+            if self.metric_wrapper == None:
                 # outside of controller wrapper
                 if self.is_standalone:
                     _ = wrapper.train_step(data)
@@ -227,12 +227,12 @@ class EnsembleWrapper(BaseWrapper):
             Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the epistemic
             uncertainty estimate (tf.Tensor).
         """
-        T = 1 if return_risk is False else self.num_members
+        T = 1 if return_risk == False else self.num_members
 
         outs = []
         for wrapper in list(self.metrics_compiled.values())[:T]:
             # ensembling the user model
-            if self.metric_wrapper is None:
+            if self.metric_wrapper == None:
                 out = wrapper(x)
             # ensembling one of our own metrics
             else:
@@ -244,7 +244,7 @@ class EnsembleWrapper(BaseWrapper):
         else:
             outs = tf.stack(outs)
             # ensembling the user model
-            if self.metric_wrapper is None:
+            if self.metric_wrapper == None:
                 mean, std = tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
                 return RiskTensor(mean, epistemic=std)
             # ensembling one of our own metrics

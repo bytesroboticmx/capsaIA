@@ -119,7 +119,7 @@ class BaseWrapper(keras.Model):
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 
         self.compiled_metrics.update_state(y, y_hat)
-        prefix = self.metric_name if prefix is None else prefix
+        prefix = self.metric_name if prefix == None else prefix
         keras_metrics = {f"{prefix}_{m.name}": m.result() for m in self.metrics}
 
         if self.is_standalone:

@@ -105,7 +105,7 @@ class ControllerWrapper(keras.Model):
             if type(m) == type:
                 m = m(self.base_model, is_standalone=False)
             # else already 'initialized' e.g., EnsembleWrapper(), VAEWrapper()
-            metric = metrics[i] if metrics is not None else [metrics]
+            metric = metrics[i] if metrics != None else [metrics]
             m.compile(optimizer[i], loss[i], metric)
             self.metric_compiled[m.metric_name] = m
 
