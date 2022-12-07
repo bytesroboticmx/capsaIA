@@ -200,10 +200,69 @@ class EnsembleWrapper(BaseWrapper):
                     accum_grads += tf.scalar_mul(scalar, grad[0])
                 keras_metrics.update(keras_metric)
 
+        # todo-high: this will not work if metrics contains non loss items, or even two different losses
+        # If user utilizes a callback, which saves weights by monitoring loss,
+        # but in this model there's no single loss that we can monitor -- each member
+        # has its own loss. So add another entry to the keras metric dict called
+        # "average loss" which is an average of all member's losses.
+        keras_metrics["average_loss"] = tf.reduce_mean(list(keras_metrics.values()))
+
         if self.is_standalone:
             return keras_metrics
         else:
             return keras_metrics, accum_grads
+
+    def test_step(self, data, features=None, prefix=None):
+        """
+        The logic for one evaluation step.
+
+        Parameters
+        ----------
+        data : tuple
+            (x, y) pairs, as in the regular Keras ``test_step``.
+        features : tf.Tensor, default None
+            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
+        prefix : str, default None
+            Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
+            such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
+            Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
+            not to be confused with what we call 'metric wrappers'. Prefix will be passed to
+            the ``test_step`` if the metric wrapper is used inside the ``ControllerWrapper``,
+            otherwise evaluates to ``None``.
+
+        Returns
+        -------
+        keras_metrics : dict
+            `Keras metrics <https://keras.io/api/metrics/>`_, if metric wrapper is trained
+            outside the ``ControllerWrapper``.
+        """
+        keras_metrics = {}
+
+        for name, wrapper in self.metrics_compiled.items():
+
+            # ensembling user model
+            if self.metric_wrapper == None:
+                # outside of controller wrapper
+                if self.is_standalone:
+                    _ = wrapper.test_step(data)
+                    for m in wrapper.metrics:
+                        keras_metrics[f"{name}_{m.name}"] = m.result()
+                # within controller wrapper
+                else:
+                    raise NotImplementedError
+
+            # ensembling one of our metric wrappers
+            else:
+                # outside of controller wrapper
+                if self.is_standalone:
+                    keras_metric = wrapper.test_step(data, prefix=name)
+                # within controller wrapper
+                else:
+                    keras_metric = wrapper.test_step(data, features, f"{prefix}_{name}")
+                keras_metrics.update(keras_metric)
+
+        return keras_metrics
 
     def call(self, x, training=False, return_risk=True, features=None):
         """

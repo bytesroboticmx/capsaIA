@@ -145,6 +145,32 @@ class ControllerWrapper(keras.Model):
         self.optim.apply_gradients(zip(gradients, trainable_vars))
         return keras_metrics
 
+    @tf.function
+    def test_step(self, data):
+        """
+        The logic for one evaluation step.
+
+        Parameters
+        ----------
+        data : tuple
+            (x, y) pairs, as in the regular Keras ``test_step``.
+
+        Returns
+        -------
+        keras_metrics : dict
+            `Keras metrics <https://keras.io/api/metrics/>`_.
+        """
+        keras_metrics = {}
+        x, y = data
+
+        features = self.feature_extractor(x)
+
+        for name, wrapper in self.metric_compiled.items():
+            keras_metric = wrapper.test_step(data, features, name)
+            keras_metrics.update(keras_metric)
+
+        return keras_metrics
+
     def call(self, x, training=False, return_risk=True):
         """
         Forward pass of the model.

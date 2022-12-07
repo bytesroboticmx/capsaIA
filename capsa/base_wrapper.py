@@ -127,6 +127,50 @@ class BaseWrapper(keras.Model):
         else:
             return keras_metrics, tf.gradients(loss, features)
 
+    @tf.function
+    def test_step(self, data, features=None, prefix=None):
+        """
+        The logic for one evaluation step.
+
+        Note: This method could be overwritten in subclasses, but the rule of thumb is to try to avoid
+        overwriting it unless it's absolutely necessary, as e.g. in the ``EnsembleWrapper`` (functionality
+        of that wrapper cannot be achieved without overwriting ``BaseWrapper``'s ``test_step``). But in general,
+        try to only overwrite ``BaseWrapper``'s ``loss_fn`` and ``call`` methods -- in most of the cases it
+        should be enough.
+
+        Parameters
+        ----------
+        data : tuple
+            (x, y) pairs, as in the regular Keras ``test_step``.
+        features : tf.Tensor, default None
+            Extracted ``features`` will be passed to the ``test_step`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
+        prefix : str, default None
+            Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
+            such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
+            Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
+            not to be confused with what we call "metric wrappers". Prefix will be passed to
+            the ``test_step`` if the metric wrapper is used inside the ``ControllerWrapper``,
+            otherwise evaluates to ``None``.
+
+        Returns
+        -------
+        keras_metrics : dict
+            `Keras metrics <https://keras.io/api/metrics/>`_, if metric wrapper is trained
+            outside the ``ControllerWrapper``.
+        """
+        x, y = data
+
+        metric_loss, y_hat = self.loss_fn(x, y, features)
+        compiled_loss = self.compiled_loss(y, y_hat, regularization_losses=self.losses)
+        loss = metric_loss + compiled_loss
+
+        self.compiled_metrics.update_state(y, y_hat)
+        prefix = self.metric_name if prefix == None else prefix
+        keras_metrics = {f"{prefix}_{m.name}": m.result() for m in self.metrics}
+
+        return keras_metrics
+
     def loss_fn(self, x, y, features=None):
         """
         An empty method, raises exception to indicate that this method requires derived classes to override it.

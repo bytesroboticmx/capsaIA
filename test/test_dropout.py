@@ -24,8 +24,10 @@ def test_regression():
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
         loss=tf.keras.losses.MeanSquaredError(),
+        # optionally, metrics could also be specified
+        metrics=keras.metrics.CosineSimilarity(name="cos"),
     )
-    history = model.fit(ds_train, epochs=30)
+    history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))
     plot_loss(history)
 
     risk_tensor = model(x_val)

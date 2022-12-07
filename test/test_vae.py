@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+from tensorflow import keras
 
 from capsa import ControllerWrapper, VAEWrapper
 from capsa.utils import (
@@ -19,7 +20,7 @@ def test_vae(use_case):
     # be initialized and used to wrap a user model. In practice, this wrapper
     # should not be used with 1-dim inputs (see VAEWrapper's documentation).
     user_model = get_user_model()
-    ds_train, ds_val, x, y, x_val, y_val = get_data_v2(batch_size=256, is_show=False)
+    ds_train, ds_val, _, _, x_val, y_val = get_data_v2(batch_size=256, is_show=False)
 
     ### use case 1 - user can interact with a MetricWrapper directly
     if use_case == 1:
@@ -27,9 +28,11 @@ def test_vae(use_case):
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
             loss=tf.keras.losses.MeanSquaredError(),
+            # optionally, metrics could also be specified
+            metrics=keras.metrics.CosineSimilarity(name="cos"),
         )
 
-        history = model.fit(ds_train, epochs=30)
+        history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))
         plot_loss(history)
 
         risk_tensor = model(x_val)
@@ -38,12 +41,12 @@ def test_vae(use_case):
     elif use_case == 2:
         model = ControllerWrapper(user_model, metrics=[VAEWrapper])
         model.compile(
-            # user needs to specify optim and loss for each metric
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
             loss=tf.keras.losses.MeanSquaredError(),
+            metrics=keras.metrics.CosineSimilarity(name="cos"),
         )
 
-        history = model.fit(ds_train, epochs=30)
+        history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))
         plot_loss(history)
 
         metrics_out = model(x_val)
