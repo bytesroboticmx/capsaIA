@@ -9,20 +9,21 @@ from ..base_wrapper import BaseWrapper
 from ..risk_tensor import RiskTensor
 
 
-def kl_loss(mu, log_std):
+def kl(mu, log_std):
     return -0.5 * tf.reduce_mean(
         1 + log_std - tf.math.square(mu) - tf.math.square(tf.math.exp(log_std)),
         axis=-1,
     )
 
 
-def rec_loss(x, rec, reduce=True):
-    loss = tf.reduce_sum(
-        tf.math.square(x - rec),
-        axis=-1,
+def mse(y, y_hat, reduce=True):
+    ax = list(range(1, len(y.shape)))
+    mse = tf.reduce_sum(
+        (y - y_hat) ** 2,
+        axis=ax,
         keepdims=(False if reduce else True),
     )
-    return tf.reduce_mean(loss) if reduce else loss
+    return tf.reduce_mean(mse) if reduce else mse
 
 
 class VAEWrapper(BaseWrapper):
@@ -160,8 +161,16 @@ class VAEWrapper(BaseWrapper):
         y_hat : tf.Tensor
             Predicted label.
         """
-        y_hat, rec, mu, log_std = self(x, training=True, T=1, features=features)
-        loss = kl_loss(mu, log_std) + rec_loss(x, rec)
+        if self.is_standalone:
+            features = self.feature_extractor(x, True)
+
+        y_hat = self.out_layer(features)
+        mu = self.mean_layer(features)
+        log_std = self.log_std_layer(features)
+
+        sampled_latent = self.sampling(mu, log_std)
+        rec = self.decoder(sampled_latent)
+        loss = kl(mu, log_std) + mse(x, rec)
         return loss, y_hat
 
     def call(self, x, training=False, return_risk=True, features=None, T=1):
@@ -201,25 +210,19 @@ class VAEWrapper(BaseWrapper):
             log_std = self.log_std_layer(features)
 
             # deterministic
-            if T == 1 and not training:
+            if T == 1:
                 rec = self.decoder(mu, training)
-                epistemic = rec_loss(x, rec, reduce=False)
+                epistemic = mse(x, rec, reduce=False)
                 return RiskTensor(y_hat, epistemic=epistemic)
 
             # stochastic
             else:
-                if training:
-                    # used in loss_fn
+                recs = []
+                for _ in T:
                     sampled_latent = self.sampling(mu, log_std)
-                    rec = self.decoder(sampled_latent)
-                    return y_hat, rec, mu, log_std
-                else:
-                    recs = []
-                    for _ in T:
-                        sampled_latent = self.sampling(mu, log_std)
-                        recs.append(self.decoder(sampled_latent))
-                    std = tf.reduce_std(recs)
-                    return RiskTensor(y_hat, epistemic=std)
+                    recs.append(self.decoder(sampled_latent))
+                std = tf.reduce_std(recs)
+                return RiskTensor(y_hat, epistemic=std)
 
     def input_to_histogram(self, x, training=False, features=None):
         # needed to interface with the Histogram metric

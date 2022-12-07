@@ -103,7 +103,12 @@ class MVEWrapper(BaseWrapper):
         y_hat : tf.Tensor
             Predicted label.
         """
-        y_hat, mu, logvar = self(x, training=True, features=features)
+        if self.is_standalone:
+            features = self.feature_extractor(x, True)
+
+        y_hat = self.out_layer(features)
+        mu = self.out_mu(features)
+        logvar = self.out_logvar(features)
 
         if not self.is_classification:
             loss = neg_log_likelihood(y, mu, logvar)
@@ -140,16 +145,9 @@ class MVEWrapper(BaseWrapper):
             features = self.feature_extractor(x, training)
         y_hat = self.out_layer(features)
 
-        
         if not return_risk:
             return RiskTensor(y_hat)
         else:
             logvar = self.out_logvar(features)
-            if not training:
-                var = tf.exp(logvar)
-                return RiskTensor(y_hat, aleatoric=var)
-            # used in loss_fn
-            else:
-                mu = self.out_mu(features)
-                return y_hat, mu, logvar
-
+            var = tf.exp(logvar)
+            return RiskTensor(y_hat, aleatoric=var)
