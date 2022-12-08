@@ -6,19 +6,6 @@ from ..risk_tensor import RiskTensor
 from ..utils import copy_layer
 
 
-# def gaussian_nll(y, mu, sigma, reduce=True):
-#     # https://github.com/aamini/evidential-deep-learning/blob/main/evidential_deep_learning/losses/continuous.py
-#     ax = list(range(1, len(y.shape)))
-
-#     logprob = (
-#         -tf.math.log(sigma)
-#         - 0.5 * tf.math.log(2 * np.pi)
-#         - 0.5 * ((y - mu) / sigma) ** 2
-#     )
-#     loss = tf.reduce_mean(-logprob, axis=ax)
-#     return tf.reduce_mean(loss) if reduce else loss
-
-
 def neg_log_likelihood(y, mu, logvar):
     variance = tf.exp(logvar)
     loss = logvar + (y - mu) ** 2 / variance
@@ -123,11 +110,6 @@ class MVEWrapper(BaseWrapper):
 
         if not self.is_classification:
             loss = neg_log_likelihood(y, mu, logvar)
-
-            # logsigma = self.out_logvar(features)
-            # # softplus is a smooth approximation of relu. Like relu, softplus always takes on positive values.
-            # sigma = tf.nn.softplus(logsigma) + 1e-6
-            # loss = gaussian_nll(y, mu, tf.math.sqrt(sigma))
         else:
             sampled_z = sampling(mu, logvar)
             sampled_y_hat = tf.nn.softmax(sampled_z)
@@ -164,10 +146,6 @@ class MVEWrapper(BaseWrapper):
         if not return_risk:
             return RiskTensor(y_hat)
         else:
-            # logsigma = self.out_logvar(features)
-            # sigma = tf.nn.softplus(logsigma) + 1e-6
-            # return RiskTensor(y_hat, aleatoric=sigma)
-
             logvar = self.out_logvar(features)
             var = tf.exp(logvar)
             return RiskTensor(y_hat, aleatoric=var)
