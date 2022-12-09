@@ -1,7 +1,7 @@
 <br />
 <p align="center">
     <a href="https://github.com/themis-ai/capsa#gh-light-mode-only" class="only-light">
-      <img src=https://raw.githubusercontent.com/themis-ai/capsa/main/docs/source/assets/header-light.svg" width="50%"/>
+      <img src="https://raw.githubusercontent.com/themis-ai/capsa/main/docs/source/assets/header-light.svg" width="50%"/>
     </a>
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->
     <a href="https://github.com/themis-ai/capsa#gh-dark-mode-only" class="only-dark">
