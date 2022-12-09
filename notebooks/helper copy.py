@@ -72,7 +72,7 @@ def plot_for_moons(x_train, y_train):
     plt.scatter(x_train[~i,0][::20], x_train[~i,1][::20], s=10, alpha=0.5, c='#d62728', zorder=-1)
 
 
-def get_model(input_shape=(2,)):
+def get_model(input_shape=(None,2)):
     
     return tf.keras.Sequential(
         [
@@ -171,6 +171,17 @@ def plot_mve_classification(output,mesh_grid,x_test,y_test):
     plt.scatter(x_test[~i,0][::20], x_test[~i,1][::20], s=10, alpha=0.5, c='#d62728', zorder=-1)
 
     plt.scatter(mesh_grid[:,0],mesh_grid[:,1],c=output.aleatoric[:,1],zorder=-2)
+
+def plot_ensemble_classification(output,mesh_grid,x_test,y_test):
+    
+    
+    plt.figure(figsize=(8,4))
+    plt.xlim(-1.5, 2.5); plt.ylim(-1, 1.5)
+    i = y_test == 0
+    plt.scatter(x_test[i,0][::20], x_test[i,1][::20], s=10, alpha=0.5, c="b",zorder=-1)
+    plt.scatter(x_test[~i,0][::20], x_test[~i,1][::20], s=10, alpha=0.5, c='#d62728', zorder=-1)
+
+    plt.scatter(mesh_grid[:,0],mesh_grid[:,1],c=tf.reduce_mean(output.epistemic[:,:],axis=1),zorder=-2)
 
 def generate_model_mve_classification():
     model = tf.keras.Sequential(
