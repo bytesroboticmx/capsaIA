@@ -8,13 +8,13 @@ Capsa Documentation
 
 .. toctree::
    :maxdepth: 1
- 
+
    👋 Introduction <introduction/index.rst>
    💾 Installation <getting_started/installation.rst>
    ⭐️ Risk Metrics <risk_metrics/index.rst>
    🎬 Basic Usage <getting_started/basic_usage.rst>
    👩‍🏫 Tutorials <tutorials/index.rst>
-   🐱‍💻 Metric Wrapper API <api_documentation/index.rst>
+   ‍💻 Metric Wrapper API <api_documentation/index.rst>
    🧿 Contribute <contribute/index.rst>
 
 
@@ -29,8 +29,8 @@ Capsa Documentation
 :abbr:`Capsa ((noun): latin root for a capsule or container.)` automatically wraps ML workflows to achieve risk-aware learning and deployment.
 
 
-.. image:: themis-light.png
+.. image:: assets/cycle-light.png
     :class: only-light
 
-.. image:: themis-dark.png
+.. image:: assets/cycle-dark.png
     :class: only-dark
