@@ -29,6 +29,7 @@ setup(
     ],
     description="A data- and model-agnostic neural network wrapper for risk-aware decision making",
     long_description=readme,
+    long_description_content_type='text/markdown',
     install_requires=requirements,
     license="GNU Affero General Public License v3.0", #TODO: update
     include_package_data=True,
