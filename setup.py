@@ -7,10 +7,22 @@ from setuptools import setup, find_packages
 with open('README.md') as readme_file:
     readme = readme_file.read()
 
+# Hide the content between <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN --> and
+# <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_END --> tags in the README
+while True:
+    start_tag = '<!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->'
+    end_tag = '<!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_END -->'
+    start = readme.find(start_tag)
+    end = readme.find(end_tag)
+    if start == -1:
+        assert end == -1, 'there should be a balanced number of start and ends'
+        break
+    else:
+        assert end != -1, 'there should be a balanced number of start and ends'
+        readme = readme[:start] + readme[end + len(end_tag):]
+
 requirements = [ ]
-
 setup_requirements = [ ]
-
 test_requirements = [ ]
 
 setup(
@@ -38,7 +50,7 @@ setup(
     packages=find_packages(include=['capsa', 'capsa.*']),
     setup_requires=setup_requirements,
     url='https://github.com/themis-ai/capsa',
-    download_url = 'https://github.com/themis-ai/capsa/archive/refs/tags/0.1.0.tar.gz',
-    version='0.1.0',
+    download_url = 'https://github.com/themis-ai/capsa/archive/refs/tags/0.1.1.tar.gz',
+    version='0.1.1',
     zip_safe=False,
 )
