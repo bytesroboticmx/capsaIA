@@ -56,13 +56,17 @@ def get_normalized_ds(x, y, shuffle=True):
 ################## visualization tools ##################
 
 
-def visualize_depth_map(model, ds, name="", vis_path=None, plot_risk=True):
+def visualize_depth_map(model, ds_or_tuple, name="", vis_path=None, plot_risk=True):
     col = 4 if plot_risk else 3
     fgsize = (12, 18) if plot_risk else (8, 14)
     fig, ax = plt.subplots(6, col, figsize=fgsize)  # (5, 10)
     fig.suptitle(name, fontsize=16, y=0.92, x=0.5)
 
-    x, y = iter(ds).get_next()
+    if type(ds_or_tuple) == tuple:
+        x, y = ds_or_tuple
+    else:
+        x, y = iter(ds).get_next()
+
     out = model(x, training=True)
 
     if plot_risk:
@@ -102,13 +106,17 @@ def visualize_depth_map(model, ds, name="", vis_path=None, plot_risk=True):
         plt.show()
 
 
-def visualize_vae_depth_map(model, ds, name="", vis_path=None):
+def visualize_vae_depth_map(model, ds_or_tuple, name="", vis_path=None):
     col = 3
     fgsize = (10, 17)
     fig, ax = plt.subplots(6, col, figsize=fgsize)  # (5, 10)
     fig.suptitle(name, fontsize=16, y=0.92, x=0.5)
 
-    x, _ = iter(ds).get_next()
+    if type(ds_or_tuple) == tuple:
+        x, _ = ds_or_tuple
+    else:
+        x, _ = iter(ds).get_next()
+
     out = model(x, training=True)
     # 'out' is a RiskTensor, contains both y_hat and risk estimate
     y_hat, risk = out.y_hat, unpack_risk_tensor(out, model.metric_name)
@@ -233,8 +241,8 @@ def gen_calibration_plot(model, ds, path=None, is_show=True):
     y_test = np.concatenate(y_test_)  # (3029, 128, 160, 1)
 
     # todo-high: need to do it for ensemble of mves as well
-    # if isinstance(model, MVEWrapper):
-    std = np.sqrt(std)
+    if isinstance(model, MVEWrapper):
+        std = np.sqrt(std)
 
     vals = []
     percentiles = np.arange(41) / 40

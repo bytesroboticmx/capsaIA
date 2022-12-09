@@ -4,7 +4,7 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
 
 BS = 32
-EP = 10  # todo-high: 20
+EP = 20
 LR = 0.0003
 
 N_TRAIN = 8192

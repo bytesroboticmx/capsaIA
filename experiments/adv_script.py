@@ -207,32 +207,30 @@ for model_name in ["dropout", "base", "vae", "mve"]:  # ,  # OOM: "ensemble"
                 visualize_depth_map(
                     model,
                     (x_batch, y_batch),
-                    curr_figs_path,
                     "visualization_test",
-                    is_show=False,
+                    curr_figs_path,
                     plot_risk=plot_risk,
                 )
                 visualize_depth_map(
                     model,
                     (perturbed_x_batch, y_batch),
-                    curr_figs_path,
                     "visualization_ood",
-                    is_show=False,
+                    curr_figs_path,
                     plot_risk=plot_risk,
                 )
             elif model_name == "vae":
                 visualize_vae_depth_map(
                     model,
                     (x_batch, y_batch),
-                    curr_figs_path,
                     "visualization_test",
+                    curr_figs_path,
                     is_show=False,
                 )
                 visualize_vae_depth_map(
                     model,
                     (perturbed_x_batch, y_batch),
-                    curr_figs_path,
                     "visualization_ood",
+                    curr_figs_path,
                     is_show=False,
                 )
 
@@ -286,8 +284,8 @@ for model_name in ["dropout", "base", "vae", "mve"]:  # ,  # OOM: "ensemble"
                 risk_id,
                 risk_od,
                 model_name=model_name,
-                path=f"{curr_figs_path}/roc",
-                is_show=False,
+                # path=f"{curr_figs_path}/roc",
+                # is_show=False,
             )
 
         print(f"{model_name} {i}/{n_adv} eps")
