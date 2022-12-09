@@ -182,7 +182,7 @@ class EnsembleWrapper(BaseWrapper):
                 if self.is_standalone:
                     _ = wrapper.train_step(data)
                     for m in wrapper.metrics:
-                        keras_metrics[f"{name}_{m.name}"] = m.result()
+                        keras_metrics[f"{name}_compiled_{m.name}"] = m.result()
                 # within controller wrapper
                 else:
                     raise NotImplementedError
@@ -247,7 +247,7 @@ class EnsembleWrapper(BaseWrapper):
                 if self.is_standalone:
                     _ = wrapper.test_step(data)
                     for m in wrapper.metrics:
-                        keras_metrics[f"{name}_{m.name}"] = m.result()
+                        keras_metrics[f"{name}_compiled_{m.name}"] = m.result()
                 # within controller wrapper
                 else:
                     raise NotImplementedError

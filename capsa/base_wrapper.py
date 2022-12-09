@@ -120,7 +120,10 @@ class BaseWrapper(keras.Model):
 
         self.compiled_metrics.update_state(y, y_hat)
         prefix = self.metric_name if prefix == None else prefix
-        keras_metrics = {f"{prefix}_{m.name}": m.result() for m in self.metrics}
+        keras_metrics = {
+            f"{prefix}_compiled_{m.name}": m.result() for m in self.metrics
+        }
+        keras_metrics[f"{prefix}_wrapper_loss"] = loss
 
         if self.is_standalone:
             return keras_metrics
@@ -167,7 +170,11 @@ class BaseWrapper(keras.Model):
 
         self.compiled_metrics.update_state(y, y_hat)
         prefix = self.metric_name if prefix == None else prefix
-        keras_metrics = {f"{prefix}_{m.name}": m.result() for m in self.metrics}
+        # prefix 'val' is added by keras automatically, so no need to add it here
+        keras_metrics = {
+            f"{prefix}_compiled_{m.name}": m.result() for m in self.metrics
+        }
+        keras_metrics[f"{prefix}_wrapper_loss"] = loss
 
         return keras_metrics
 
