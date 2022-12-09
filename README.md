@@ -46,7 +46,7 @@ We know deploying machine learning models can be tough. Today's models are notor
 
 Ensuring awareness of not one, but all of these risks, requires a tedious process involving changes to your model, its architecture, loss function, optimization procedure, and more.
 
-Luckily, capsa has got you covered! Capsa automatically wraps your model (i.e., like a <i>capsule</i>!) and makes all of the internal changes so it can be end-to-end risk-aware. Capsa abstracts away all of those changes so you don't have to change any of your existing training or deployment pipelines in order to build state-of-the-art trustworthy machine learning solutions.
+Luckily, capsa has got you covered! Capsa automatically wraps your model (i.e., like a <i>capsule</i>!) and makes all of the internal changes so it can be end-to-end risk-aware. Capsa abstracts away all of those changes so you don't have to modify any of your existing training or deployment pipelines in order to build state-of-the-art trustworthy machine learning solutions.
 
 # 🚀 Quickstart
 
