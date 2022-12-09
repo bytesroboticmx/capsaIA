@@ -23,14 +23,12 @@
     <a href="https://pypi.org/project/capsa/">
         <img alt="PyPi Version" src="https://img.shields.io/pypi/pyversions/capsa">
     </a>
-    <a href="https://pypi.org/project/mosaicml/">
-        <img alt="PyPi Package Version" src="https://img.shields.io/pypi/v/capsa">
+    <a href="https://pypi.org/project/capsa/">
+        <img alt="PyPi Package Version" src="https://img.shields.io/pypi/v/capsa?color=green">
     </a>
-    <!--
     <a href="https://pypi.org/project/capsa/">
         <img alt="PyPi Downloads" src="https://pepy.tech/badge/capsa">
     </a>
-    -->
     <!--
     <a href="https://themisai.io/capsa">
         <img alt="Documentation" src="https://readthedocs.org/projects/capsa/badge/?version=stable">
