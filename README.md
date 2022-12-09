@@ -13,9 +13,9 @@
 <h2><p align="center">A Library for Risk-Aware and Trustworthy Machine Learning</p></h2>
 
 <h4><p align='center'>
-<a href="https://www.themisai.io">[🌐 Website]</a>
-- <a href="https://themisai.io/capsa/getting_started/basic_usage.html">[🚀 Getting Started]</a>
+<a href="https://themisai.io/capsa/getting_started/basic_usage.html">[🚀 Getting Started]</a>
 - <a href="https://themisai.io/capsa/">[📄 Docs]</a>
+- <a href="https://www.themisai.io">[🌐 Website]</a>
 - <a href="https://themisai.io/company.html">[🧠 We're Hiring!]</a>
 </p></h4>
 
