@@ -72,7 +72,7 @@ def plot_for_moons(x_train, y_train):
     plt.scatter(x_train[~i,0][::20], x_train[~i,1][::20], s=10, alpha=0.5, c='#d62728', zorder=-1)
 
 
-def get_model(input_shape=(2,)):
+def get_model(input_shape=(None,2)):
     
     return tf.keras.Sequential(
         [
