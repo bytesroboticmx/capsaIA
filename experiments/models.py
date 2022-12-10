@@ -14,7 +14,6 @@ import functools
 from keras.utils.layer_utils import count_params
 
 import config
-from losses import MSE
 
 ########################## U-net ##########################
 

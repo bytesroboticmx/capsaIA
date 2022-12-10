@@ -13,7 +13,6 @@ import tensorflow as tf
 from tensorflow import keras
 
 import config
-from losses import MSE
 from models import unet
 from capsa import MVEWrapper, EnsembleWrapper, DropoutWrapper, VAEWrapper
 
@@ -146,21 +145,6 @@ def visualize_vae_depth_map(model, ds_or_tuple, name="", vis_path=None):
         plt.close()
     else:
         plt.show()
-
-
-# todo-med: normalize together
-# y_hat, variance = model(x) # (6, 128, 160, 1), (6, 128, 160, 1)
-# y_hat_ood, variance_ood = model(x_ood)
-
-# # normalize separately
-# # variance_normalized = (variance - np.min(variance)) / (np.max(variance) - np.min(variance))
-# # variance_ood_normalized = (variance_ood - np.min(variance_ood)) / (np.max(variance_ood) - np.min(variance_ood))
-
-# # normalize tougher
-# cat = tf.stack([variance, variance_ood]) #(6, 128, 160, 1), (6, 128, 160, 1) = (2, 6, 128, 160, 1)
-# cat_normalized = (cat - np.min(cat)) / (np.max(cat) - np.min(cat))
-# variance_normalized = cat_normalized[0]
-# variance_ood_normalized = cat_normalized[1]
 
 
 ################## plotting tools ##################
@@ -325,101 +309,6 @@ def gen_ood_comparison(
         return iid, ood
 
 
-################## model saving/loading tools ##################
-
-
-def select_best_checkpoint(model_path):
-    checkpoints_path = os.path.join(model_path, "checkpoints")
-    model_name = model_path.split("/")[-2]
-
-    l = sorted(glob.glob(os.path.join(checkpoints_path, "*.tf*")))
-    # l = [i.split('/')[-1].split('.')[0] for i in l]
-    # >>> ['ep_128_weights', 'ep_77_weights', 'ep_103_weights']
-
-    ### Selecting checkpoint with the smallest vloss
-    # -1.702vloss_100iter.tf.data-00000-of-00001
-    # l = [i.split('/')[-1].split('.')[1] for i in l]
-    # >>> ['190vloss_900iter', '317vloss_6700iter', '386vloss_1900iter']
-    l_split = [float(i.split("/")[-1].split("vloss")[0]) for i in l]
-    # >>> ['-0.155', '-1.183', '0.951']
-    # select lowest loss
-    min_loss = min(l_split)
-
-    model_paths = [i for i in l if str(min_loss) in i]
-    # both of the two files (tf.index and tf.data-00000-of-00001) are representing the same model
-    # 1 file in case of the base_model
-    assert len(model_paths) == 2 or len(model_paths) == 1
-    path = model_paths[0].split(".tf")[0]
-    return f"{path}.tf", model_name
-
-
-def load_model(
-    path, model_name, ds, opts={"latent_dim": 100, "num_members": 3}, quite=True
-):
-    # path = tf.train.latest_checkpoint(checkpoints_path)
-
-    if model_name == "base":
-        model = unet()
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=config.LR),
-            loss=MSE,
-        )
-
-    elif model_name == "mve":
-        base_model = unet()
-        model = MVEWrapper(base_model)
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=config.LR),
-            loss=MSE,
-        )
-
-    elif model_name == "vae":
-        latent_dim = opts["latent_dim"]
-
-        model = VAEWrapper(latent_dim)
-        model.compile(optimizer=keras.optimizers.Adam(learning_rate=config.LR))
-
-    elif model_name == "dropout":
-        base_model = unet(drop_prob=0.1)
-        model = DropoutWrapper(base_model, p=0.0)
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=config.LR),
-            loss=MSE,
-        )
-
-    elif model_name == "ensemble":
-        num_members = opts["num_members"]
-
-        base_model = unet()
-        model = EnsembleWrapper(base_model, num_members=num_members)
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=config.LR),
-            loss=MSE,
-        )
-
-    elif model_name == "compatibility_mve":
-        num_members = opts["num_members"]
-
-        base_model = unet()
-        model = EnsembleWrapper(base_model, metric_wrapper=MVEWrapper, num_members=3)
-        model.compile(
-            optimizer=[keras.optimizers.Adam(learning_rate=config.LR)],
-            loss=[MSE],
-        )
-
-    # https://github.com/tensorflow/tensorflow/issues/33150#issuecomment-574517363
-    _ = model.fit(ds, epochs=1, verbose=0)
-    load_status = model.load_weights(path)
-
-    # base mode tires to load optimizer as well, so load_status gives error
-    if model_name not in ["base", "notebook_base"]:
-        # used as validation that all variable values have been restored from the checkpoint
-        load_status.assert_consumed()
-    if not quite:
-        print(f"Successfully loaded weights from {path}.")
-    return model
-
-
 ################## miscellaneous ##################
 
 
@@ -456,7 +345,7 @@ def AleatoricWrapper(user_model):
     model = MVEWrapper(user_model)
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=config.LR),
-        loss=MSE,
+        loss="mse",
     )
     return model
 
@@ -465,7 +354,7 @@ def EpistemicWrapper(user_model):
     model = EnsembleWrapper(user_model, num_members=3)
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=config.LR),
-        loss=MSE,
+        loss="mse",
     )
     return model
 
@@ -476,13 +365,6 @@ def vis_depth_map(model, ds_train, ds_test=None, ds_ood=None, plot_risk=True):
         visualize_depth_map(model, ds_test, "Test Dataset", plot_risk=plot_risk)
     if ds_ood != None:
         visualize_depth_map(model, ds_ood, "O.O.D Dataset", plot_risk=plot_risk)
-
-
-def load_models(path, ds_train):
-    path, model_name = select_best_checkpoint(path)
-    opts = {"num_members": 3}
-    trained_user_model = load_model(path, model_name, ds_train, opts, quite=True)
-    return trained_user_model
 
 
 def get_datasets():
