@@ -1,1 +1,1 @@
-from .histogram import HistogramWrapper, HistogramCallback
+from .histogram import HistogramWrapper
