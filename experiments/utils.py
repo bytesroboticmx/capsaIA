@@ -167,29 +167,43 @@ def plot_loss(history, plots_path=None, compiled_only=False):
         plt.show()
 
 
-def plot_roc(iid_risk, ood_risk, model_name):
+def plot_roc(iid_risk, ood_risk, model_name, is_palette=False):
+    """iid_risk is an array; ood_risk can be an array or a list of arrays"""
 
-    y = np.concatenate([np.zeros(iid_risk.shape), np.ones(ood_risk.shape)], 0)
-    # can probability estimates or non-thresholded measure of decisions
-    y_hat = np.concatenate([iid_risk, ood_risk], 0)
-
-    fpr, tpr, thresholds = roc_curve(y, y_hat)
-    roc_auc = auc(fpr, tpr)
-
-    idx = np.argmax(tpr - fpr)
-    best_thresh = thresholds[idx]
+    # convert ood_risk to a list to reuse the body of the for loop below
+    # (even if ood_risk has one element or multiple)
+    ood_risk = ood_risk if type(ood_risk) == list else [ood_risk]
 
     fig, ax = plt.subplots(figsize=(8, 5))
+
+    if is_palette:
+        color_palette = sns.color_palette("mako", len(ood_risk))
+    else:
+        color_palette = ["C1"]
     plt.plot([0, 1], [0, 1], linestyle="--")
-    plt.plot(
-        fpr,
-        tpr,
-        marker=".",
-        label=f"""ROC curve (area = {round(roc_auc, 4)});
-                  best thresh {str(round(best_thresh, 4))}""".format(
-            best_thresh
-        ),
-    )
+
+    for i in range(len(ood_risk)):
+        current_ood_risk = ood_risk[i]
+
+        y = np.concatenate(
+            [np.zeros(iid_risk.shape), np.ones(current_ood_risk.shape)], 0
+        )
+        # can be probability estimates or non-thresholded measure of decisions
+        y_hat = np.concatenate([iid_risk, current_ood_risk], 0)
+
+        fpr, tpr, thresholds = roc_curve(y, y_hat)
+        roc_auc = auc(fpr, tpr)
+
+        idx = np.argmax(tpr - fpr)
+        best_thresh = thresholds[idx]
+
+        plt.plot(
+            fpr,
+            tpr,
+            marker=".",
+            label=f"ROC curve (area = {round(roc_auc, 4)})".format(best_thresh),
+            color=color_palette[i],
+        )
 
     ### zoom in on the corner
     # plt.xlim([-0.01, .3])
