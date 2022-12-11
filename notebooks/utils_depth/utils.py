@@ -19,26 +19,50 @@ from capsa import MVEWrapper, EnsembleWrapper, DropoutWrapper, VAEWrapper
 
 ################## data loading tools ##################
 
-# https://github.com/aamini/evidential-deep-learning/blob/main/neurips2020/train_depth.py#L34
-def load_depth_data():
-    train = h5py.File(config.TRAIN_PATH, "r")
-    test = h5py.File(config.TEST_PATH, "r")
-    return (train["image"], train["depth"]), (test["image"], test["depth"])
+
+def _load_depth_data(id_path):
+    data = h5py.File(id_path, "r")
+    # (8192, 128, 160, 3), (8192, 128, 160, 1)
+    train_x, train_y = data["x"], data["y"]
+    # (256, 128, 160, 3), (256, 128, 160, 1)
+    test_x, test_y = data["x_test"], data["y_test"]
+    return (train_x, train_y), (test_x, test_y)
 
 
-def load_apollo_data():
-    test = h5py.File(config.OOD_PATH, "r")
-    return (None, None), (test["image"], test["depth"])
+def _load_ood_data(ood_path):
+    path = os.path.join(ood_path, "images/val")
+    paths = glob.glob(f"{path}/*")[: config.N_TRAIN]
+
+    kwargs = {"interpolation": "bilinear", "target_size": (128, 160)}
+    load = lambda x: tf.keras.utils.load_img(x, **kwargs)
+
+    # list of arrays (128, 160, 3)
+    img_arrays = [np.array(load(p)) for p in paths]
+    # array (256, 128, 160, 3)
+    arr = np.array(img_arrays)
+    return arr
 
 
-def _totensor_and_normalize(x, y):
-    x = tf.convert_to_tensor(x, tf.float32)
-    y = tf.convert_to_tensor(y, tf.float32)
-    return x / 255.0, y / 255.0
+def _totensor_and_normalize(tuple_or_x):
+    if type(tuple_or_x) == tuple:
+        x, y = tuple_or_x
+        x = tf.convert_to_tensor(x, tf.float32)
+        y = tf.convert_to_tensor(y, tf.float32)
+        return x / 255.0, y / 255.0
+    else:
+        x = tuple_or_x
+        x = tf.convert_to_tensor(x, tf.float32)
+        return x / 255.0
 
 
-def _get_ds(x, y, shuffle):
-    ds = tf.data.Dataset.from_tensor_slices((x, y))
+def _get_normalized_ds(x, y, shuffle=True):
+    if y == None:
+        x = _totensor_and_normalize(x)
+        ds = tf.data.Dataset.from_tensor_slices(x)
+    else:
+        x, y = _totensor_and_normalize((x, y))
+        ds = tf.data.Dataset.from_tensor_slices((x, y))
+
     ds = ds.cache()
     if shuffle:
         ds = ds.shuffle(x.shape[0])
@@ -47,12 +71,61 @@ def _get_ds(x, y, shuffle):
     return ds
 
 
-def get_normalized_ds(x, y, shuffle=True):
-    x, y = _totensor_and_normalize(x, y)
-    return _get_ds(x, y, shuffle)
+def get_datasets(id_path, ood_path):
+    (x_train, y_train), (x_test, y_test) = _load_depth_data(id_path)
+    ds_train = _get_normalized_ds(x_train, y_train)
+    ds_test = _get_normalized_ds(x_test, y_test)
+
+    x_ood = _load_ood_data(ood_path)
+    ds_ood = _get_normalized_ds(x_ood, None)
+    return ds_train, ds_test, ds_ood
 
 
 ################## visualization tools ##################
+
+
+def visualize_depth_map_no_y(model, ds, name="", vis_path=None, plot_risk=True):
+    col = 3 if plot_risk else 2
+    fgsize = (8.9, 17) if plot_risk else (5.2, 14)
+    fig, ax = plt.subplots(6, col, figsize=fgsize)  # (5, 10)
+    fig.suptitle(name, fontsize=16, y=0.92, x=0.5)
+
+    x = iter(ds).get_next()
+    out = model(x, training=True)
+
+    if plot_risk:
+        # 'out' is a RiskTensor, contains both y_hat and risk estimate
+        y_hat, risk = out.y_hat, unpack_risk_tensor(out, model.metric_name)
+    else:
+        # base_model doesn't have a risk estimate
+        y_hat = out
+
+    for i in range(6):
+        ax[i, 0].imshow(x[i])
+        ax[i, 1].imshow(
+            tf.clip_by_value(y_hat[i, :, :, 0], clip_value_min=0, clip_value_max=1),
+            cmap=plt.cm.jet,
+        )
+        if plot_risk:
+            ax[i, 2].imshow(
+                tf.clip_by_value(risk[i, :, :, 0], clip_value_min=0, clip_value_max=1),
+                cmap=plt.cm.jet,
+            )
+
+    # name columns
+    ax[0, 0].set_title("x")
+    ax[0, 1].set_title("y_hat")
+    if plot_risk:
+        ax[0, 2].set_title("risk")
+
+    # turn off axis
+    [ax.set_axis_off() for ax in ax.ravel()]
+
+    if vis_path != None:
+        plt.savefig(f"{vis_path}/{name}.pdf", bbox_inches="tight", format="pdf")
+        plt.close()
+    else:
+        plt.show()
 
 
 def visualize_depth_map(model, ds_or_tuple, name="", vis_path=None, plot_risk=True):
@@ -272,7 +345,10 @@ def gen_ood_comparison(
         ds_itter = ds.as_numpy_iterator()
         ll = []
 
-        for x, y in ds_itter:  # (32, 128, 160, 3), (32, 128, 160, 1)
+        # the ood dataset has no labels
+        # (32, 128, 160, 3), (32, 128, 160, 1) or (32, 128, 160, 3)
+        for xy_or_x in ds_itter:
+            x = xy_or_x[0] if type(xy_or_x) == tuple else xy_or_x
 
             if model.metric_name in ["dropout", "vae"]:
                 out = model(x, T=T)  # (B, 128, 160, 1), (B, 128, 160, 1)
@@ -373,21 +449,10 @@ def EpistemicWrapper(user_model):
     return model
 
 
-def vis_depth_map(model, ds_train, ds_test=None, ds_ood=None, plot_risk=True):
+def vis_depth_map(model, ds_test=None, ds_ood=None, plot_risk=True):
     # visualize_depth_map(model, ds_train, "Train Dataset", plot_risk=plot_risk)
     if ds_test != None:
         visualize_depth_map(model, ds_test, "Test Dataset", plot_risk=plot_risk)
     if ds_ood != None:
-        visualize_depth_map(model, ds_ood, "O.O.D Dataset", plot_risk=plot_risk)
-
-
-def get_datasets():
-    (x_train, y_train), (x_test, y_test) = load_depth_data()
-
-    ds_train = get_normalized_ds(x_train[: config.N_TRAIN], y_train[: config.N_TRAIN])
-    ds_test = get_normalized_ds(x_test[: config.N_TEST], y_test[: config.N_TEST])
-
-    _, (x_ood, y_ood) = load_apollo_data()
-    ds_ood = get_normalized_ds(x_ood, y_ood)
-
-    return ds_train, ds_test, ds_ood
+        # the ood dataset has no labels
+        visualize_depth_map_no_y(model, ds_ood, "O.O.D Dataset", plot_risk=plot_risk)

@@ -9,8 +9,3 @@ LR = 0.0003
 
 N_TRAIN = 8192
 N_TEST = 256
-
-DATA_PATH = "/home/iaroslavelistratov/depth/data"
-TRAIN_PATH = f"{DATA_PATH}/depth_train.h5"
-TEST_PATH = f"{DATA_PATH}/depth_test.h5"
-OOD_PATH = f"{DATA_PATH}/apolloscape_test.h5"
