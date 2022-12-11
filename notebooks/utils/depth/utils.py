@@ -299,55 +299,6 @@ def plot_roc(iid_risk, ood_risk, model_name, is_palette=False):
     plt.show()
 
 
-def gen_calibration_plot(model, ds, path=None, is_show=True):
-    mu_ = []
-    std_ = []
-    y_test_ = []
-
-    # x_test_batch, y_test_batch = iter(ds).get_next()
-    for (x_test_batch, y_test_batch) in ds:
-        out = model(x_test_batch)
-        mu_batch, std_batch = out.y_hat, unpack_risk_tensor(out, model.metric_name)
-
-        mu_.append(mu_batch)
-        std_.append(std_batch)
-        y_test_.append(y_test_batch)
-
-        B = x_test_batch.shape[0]
-        assert mu_batch.shape == (B, 128, 160, 1)
-        assert std_batch.shape == (B, 128, 160, 1)
-
-    mu = np.concatenate(mu_)  # (3029, 128, 160, 1)
-    std = np.concatenate(std_)  # (3029, 128, 160, 1)
-    y_test = np.concatenate(y_test_)  # (3029, 128, 160, 1)
-
-    # todo-high: need to do it for ensemble of mves as well
-    if isinstance(model, MVEWrapper):
-        std = np.sqrt(std)
-
-    vals = []
-    percentiles = np.arange(41) / 40
-    for percentile in percentiles:
-        # returns the value at the n% percentile e.g., stats.norm.ppf(0.5, 0, 1) == 0.0
-        # in other words, if have a normal distrib. with mean 0 and std 1, 50% of data falls below and 50% falls above 0.0.
-        ppf_for_this_percentile = stats.norm.ppf(
-            percentile, mu, std
-        )  # (3029, 128, 160, 1)
-        vals.append(
-            (y_test <= ppf_for_this_percentile).mean()
-        )  # (3029, 128, 160, 1) -> scalar
-
-    plt.plot(percentiles, vals)
-    plt.plot(percentiles, percentiles)
-    plt.title(str(np.mean(abs(percentiles - vals))))
-
-    if is_show:
-        plt.show()
-
-    if path != None:
-        plt.savefig(path)
-
-
 def gen_ood_comparison(
     ds_test, ds_ood, model, is_show=True, T=None, reduce="per_img", is_return=False
 ):

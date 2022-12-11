@@ -8,4 +8,5 @@ from .utils import (
     copy_layer,
     get_preds_names,
     plot_risk_2d,
+    gen_calibration_plot,
 )
