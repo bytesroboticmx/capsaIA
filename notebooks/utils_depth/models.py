@@ -13,7 +13,7 @@ from tensorflow.keras.layers import (
 import functools
 from keras.utils.layer_utils import count_params
 
-import config
+import utils_depth.config as config
 
 ########################## U-net ##########################
 
@@ -123,7 +123,7 @@ def unet(
     else:
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=config.LR),
-            loss=MSE,
+            loss="mse",
         )
         return model
 

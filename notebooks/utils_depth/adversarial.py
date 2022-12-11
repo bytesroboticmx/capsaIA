@@ -6,11 +6,7 @@ import seaborn as sns
 
 import tensorflow as tf
 
-from utils import (
-    unpack_risk_tensor,
-    plot_roc,
-    visualize_depth_map,
-)
+from utils_depth.utils import unpack_risk_tensor
 
 
 def gallery(array, ncols=3):

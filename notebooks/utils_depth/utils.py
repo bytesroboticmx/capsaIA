@@ -12,8 +12,8 @@ from scipy import stats
 import tensorflow as tf
 from tensorflow import keras
 
-import config
-from models import unet
+import utils_depth.config as config
+from utils_depth.models import unet
 from capsa import MVEWrapper, EnsembleWrapper, DropoutWrapper, VAEWrapper
 
 
@@ -64,7 +64,7 @@ def visualize_depth_map(model, ds_or_tuple, name="", vis_path=None, plot_risk=Tr
     if type(ds_or_tuple) == tuple:
         x, y = ds_or_tuple
     else:
-        x, y = iter(ds).get_next()
+        x, y = iter(ds_or_tuple).get_next()
 
     out = model(x, training=True)
 
