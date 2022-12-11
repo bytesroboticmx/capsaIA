@@ -12,8 +12,8 @@ from scipy import stats
 import tensorflow as tf
 from tensorflow import keras
 
-import utils_depth.config as config
-from utils_depth.models import unet
+import config
+from models import unet
 from capsa import MVEWrapper, EnsembleWrapper, DropoutWrapper, VAEWrapper
 
 

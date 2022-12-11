@@ -1,5 +1,3 @@
-# https://github.com/aamini/evidential-deep-learning/blob/main/neurips2020/models/depth/deterministic.py
-
 import tensorflow as tf
 from tensorflow.keras.layers import (
     Conv2D,
@@ -13,7 +11,7 @@ from tensorflow.keras.layers import (
 import functools
 from keras.utils.layer_utils import count_params
 
-import utils_depth.config as config
+import config
 
 ########################## U-net ##########################
 
