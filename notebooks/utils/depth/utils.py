@@ -19,6 +19,16 @@ from capsa import MVEWrapper, EnsembleWrapper, DropoutWrapper, VAEWrapper
 
 ################## data loading tools ##################
 
+# # hf = h5py.File("/home/iaroslavelistratov/results/nyu_train_2048.h5", "w")
+# # hf.create_dataset("x", data=x_train[:2048])
+# # hf.create_dataset("y", data=y_train[:2048])
+
+# train = h5py.File("/home/iaroslavelistratov/results/nyu_train_2048.h5", "r")
+# x, y = train["x"], train["y"]
+# print(x.shape)
+# print(y.shape)
+# print("loaded")
+
 
 def _load_depth_data(id_path):
     data = h5py.File(id_path, "r")
