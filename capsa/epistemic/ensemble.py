@@ -36,7 +36,12 @@ class EnsembleWrapper(BaseWrapper):
     """
 
     def __init__(
-        self, base_model, is_standalone=True, metric_wrapper=None, num_members=3
+        self,
+        base_model,
+        is_standalone=True,
+        num_members=3,
+        metric_wrapper=None,
+        kwargs={},
     ):
         """
         Parameters
@@ -45,11 +50,16 @@ class EnsembleWrapper(BaseWrapper):
             A model to be transformed into a risk-aware variant.
         is_standalone : bool, default True
             Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``.
+        num_members : int, default 3
+            Number of members in the deep ensemble.
         metric_wrapper : capsa.BaseWrapper, default None
             Class object of an individual metric wrapper (which subclass ``capsa.BaseWrapper``) that
             user wants to ensemble, if it's ``None`` then this wrapper ensembles the ``base_model``.
-        num_members : int, default 1
-            Number of members in the deep ensemble.
+        kwargs : dict
+            Keyword args used to initialize metric wrappers, used only if ``metric_wrapper`` is provided.
+            The kwargs are metric wrapper specific, they could be different depending on the wrapper to
+            be ensembled. But they should not include ``base_model`` and ``is_standalone`` keywords.
+
 
         Attributes
         ----------
@@ -65,6 +75,7 @@ class EnsembleWrapper(BaseWrapper):
         self.metric_wrapper = metric_wrapper
         self.num_members = num_members
         self.metrics_compiled = {}
+        self.kwargs = kwargs
 
         if self.metric_wrapper == None and not is_standalone:
             # need to modify user_model's train_step to return
@@ -125,7 +136,9 @@ class EnsembleWrapper(BaseWrapper):
             m = (
                 m
                 if self.metric_wrapper == None
-                else self.metric_wrapper(m, self.is_standalone)
+                else self.metric_wrapper(
+                    m, is_standalone=self.is_standalone, **self.kwargs
+                )
             )
             m_name = (
                 f"usermodel_{i}"
