@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
 
-from capsa import ControllerWrapper, MVEWrapper, HistogramWrapper, HistogramCallback
+from capsa import ControllerWrapper, MVEWrapper  # , HistogramWrapper, HistogramCallback
 from capsa.utils import get_user_model, plot_loss, get_preds_names, plot_risk_2d
 from data import get_data_v2
 
@@ -15,13 +15,15 @@ def test_regression(use_case):
 
     # user can interact with a MetricWrapper directly
     if use_case == 1:
-        model = MVEWrapper(user_model,is_classification=False)
+        model = MVEWrapper(user_model, is_classification=False)
 
         model.compile(
             optimizer=keras.optimizers.Adam(learning_rate=2e-3),
             loss=keras.losses.MeanSquaredError(),
+            # optionally, metrics could also be specified
+            metrics=keras.metrics.CosineSimilarity(name="cos"),
         )
-        history = model.fit(ds_train, epochs=10)
+        history = model.fit(ds_train, epochs=10, validation_data=(x_val, y_val))
         plot_loss(history)
 
         risk_tensor = model(x_val)
@@ -34,9 +36,10 @@ def test_regression(use_case):
             # user needs to specify optim and loss for each metric
             optimizer=keras.optimizers.Adam(learning_rate=2e-3),
             loss=keras.losses.MeanSquaredError(),
+            metrics=keras.metrics.CosineSimilarity(name="cos"),
         )
 
-        history = model.fit(ds_train, epochs=10)
+        history = model.fit(ds_train, epochs=10, validation_data=(x_val, y_val))
         plot_loss(history)
 
         metrics_out = model(x_val)
@@ -49,7 +52,7 @@ def test_regression(use_case):
 def test_regression_predict():
 
     user_model = get_user_model()
-    ds_train, ds_val, _, _, _, _ = get_data_v2(batch_size=256, is_show=False)
+    ds_train, ds_val, _, _, x_val, y_val = get_data_v2(batch_size=256, is_show=False)
 
     model = ControllerWrapper(user_model, metrics=[MVEWrapper])
 
@@ -57,9 +60,10 @@ def test_regression_predict():
         # user needs to specify optim and loss for each metric
         optimizer=keras.optimizers.Adam(learning_rate=2e-3),
         loss=keras.losses.MeanSquaredError(),
+        metrics=keras.metrics.CosineSimilarity(name="cos"),
     )
 
-    history = model.fit(ds_train, epochs=10)
+    history = model.fit(ds_train, epochs=10, validation_data=(x_val, y_val))
     plot_loss(history)
 
     # predict cats batch output to a single tensor under the hood

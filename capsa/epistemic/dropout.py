@@ -51,14 +51,24 @@ class DropoutWrapper(BaseWrapper):
         ----------
         metric_name : str
             Represents the name of the metric wrapper.
-        new_model : tf.keras.Model
+        model : tf.keras.Model
             ``base_model`` with added dropout layers.
         """
         super(DropoutWrapper, self).__init__(base_model, is_standalone)
 
         self.metric_name = "dropout"
-        self.is_standalone = is_standalone
-        self.new_model = add_dropout(base_model, p)
+
+        if p == 0.0:
+            assert_has_dropout(base_model)
+            self.model = base_model
+        else:
+            self.model = add_dropout(base_model, p)
+
+        if not self.is_standalone:
+            raise NotImplementedError(
+                """Using ``DropoutWrapper`` inside the ``ControllerWrapper``
+                is not currently supported."""
+            )
 
     def loss_fn(self, x, y, features=None):
         """
@@ -82,7 +92,7 @@ class DropoutWrapper(BaseWrapper):
         y_hat : tf.Tensor
             Predicted label.
         """
-        y_hat = self(x, training=True, return_risk=False).y_hat
+        y_hat = self.model(x, True)
         metric_loss = 0
         return metric_loss, y_hat
 
@@ -98,9 +108,6 @@ class DropoutWrapper(BaseWrapper):
             Can be used to specify a different behavior in training and inference.
         return_risk : bool, default True
             Indicates whether or not to output a risk estimate in addition to the model's prediction.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``call`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
         T : int, default 20
             Number of forward passes with different dropout masks.
 
@@ -111,20 +118,23 @@ class DropoutWrapper(BaseWrapper):
             uncertainty estimate (tf.Tensor).
         """
         if not return_risk:
-            y_hat = self.new_model(x, training)
+            y_hat = self.model(x, training)
             return RiskTensor(y_hat)
         else:
             # user model
             outs = []
             for _ in range(T):
                 # we need training=True so that dropout is applied
-                outs.append(self.new_model(x, True))
+                outs.append(self.model(x, True))
             outs = tf.stack(outs)  # (T, N, 1)
             mean, std = tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)  # (N, 1)x2
             return RiskTensor(mean, epistemic=std)
 
 
 def add_dropout(model, p):
+    """Adds dropout layers after dense layers (or spatial dropout
+    layers after conv layers)."""
+
     inputs = model.layers[0].input
 
     for i in range(len(model.layers)):
@@ -149,3 +159,14 @@ def add_dropout(model, p):
 
     new_model = tf.keras.Model(inputs, x)
     return new_model
+
+
+def assert_has_dropout(base_model):
+    """check if dropout is inside the base_model, otherwise throw an error"""
+
+    is_dropout = False
+    for l in base_model.layers:
+        # returns True for both regular and spatial dropout layers
+        if issubclass(type(l), Dropout):
+            is_dropout = True
+    assert is_dropout == True, "p=0.0 but the base_model has no dropout layers."

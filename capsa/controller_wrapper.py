@@ -105,7 +105,7 @@ class ControllerWrapper(keras.Model):
             if type(m) == type:
                 m = m(self.base_model, is_standalone=False)
             # else already 'initialized' e.g., EnsembleWrapper(), VAEWrapper()
-            metric = metrics[i] if metrics is not None else [metrics]
+            metric = metrics[i] if metrics != None else [metrics]
             m.compile(optimizer[i], loss[i], metric)
             self.metric_compiled[m.metric_name] = m
 
@@ -143,6 +143,32 @@ class ControllerWrapper(keras.Model):
         trainable_vars = self.feature_extractor.trainable_variables
         gradients = tf.gradients(features, trainable_vars, accum_grads)
         self.optim.apply_gradients(zip(gradients, trainable_vars))
+        return keras_metrics
+
+    @tf.function
+    def test_step(self, data):
+        """
+        The logic for one evaluation step.
+
+        Parameters
+        ----------
+        data : tuple
+            (x, y) pairs, as in the regular Keras ``test_step``.
+
+        Returns
+        -------
+        keras_metrics : dict
+            `Keras metrics <https://keras.io/api/metrics/>`_.
+        """
+        keras_metrics = {}
+        x, y = data
+
+        features = self.feature_extractor(x)
+
+        for name, wrapper in self.metric_compiled.items():
+            keras_metric = wrapper.test_step(data, features, name)
+            keras_metrics.update(keras_metric)
+
         return keras_metrics
 
     def call(self, x, training=False, return_risk=True):

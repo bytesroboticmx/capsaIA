@@ -13,12 +13,10 @@ def neg_log_likelihood(y, mu, logvar):
 
 
 def sampling(z_mean, z_log_var):
-
     batch = tf.shape(z_mean)[0]
     dim = tf.shape(z_mean)[1]
     epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
     return z_mean + tf.exp(0.5 * z_log_var) * epsilon
-
 
 
 class MVEWrapper(BaseWrapper):
@@ -53,7 +51,7 @@ class MVEWrapper(BaseWrapper):
         >>> model.fit(...)
     """
 
-    def __init__(self, base_model,is_classification, is_standalone=True):
+    def __init__(self, base_model, is_standalone=True, is_classification=False):
         """
         Parameters
         ----------
@@ -62,7 +60,8 @@ class MVEWrapper(BaseWrapper):
         is_standalone : bool, default True
             Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``.
         is_classification : bool
-            Indicates whether or not the model is a classification model. If ``True``, the model do mean variance estimation via reparametrization trick.
+            Indicates whether or not the model is a classification model. If ``True``, do mean
+            variance estimation via the reparametrization trick.
 
         Attributes
         ----------
@@ -80,7 +79,6 @@ class MVEWrapper(BaseWrapper):
         self.metric_name = "mve"
         self.out_mu = copy_layer(self.out_layer, override_activation="linear")
         self.out_logvar = copy_layer(self.out_layer, override_activation="linear")
-
         self.is_classification = is_classification
 
     def loss_fn(self, x, y, features=None):
@@ -103,7 +101,12 @@ class MVEWrapper(BaseWrapper):
         y_hat : tf.Tensor
             Predicted label.
         """
-        y_hat, mu, logvar = self(x, training=True, features=features)
+        if self.is_standalone:
+            features = self.feature_extractor(x, True)
+
+        y_hat = self.out_layer(features)
+        mu = self.out_mu(features)
+        logvar = self.out_logvar(features)
 
         if not self.is_classification:
             loss = neg_log_likelihood(y, mu, logvar)
@@ -140,16 +143,9 @@ class MVEWrapper(BaseWrapper):
             features = self.feature_extractor(x, training)
         y_hat = self.out_layer(features)
 
-        
         if not return_risk:
             return RiskTensor(y_hat)
         else:
             logvar = self.out_logvar(features)
-            if not training:
-                var = tf.exp(logvar)
-                return RiskTensor(y_hat, aleatoric=var)
-            # used in loss_fn
-            else:
-                mu = self.out_mu(features)
-                return y_hat, mu, logvar
-
+            var = tf.exp(logvar)
+            return RiskTensor(y_hat, aleatoric=var)

@@ -25,14 +25,11 @@ def test_ensemble(use_case):
         model.compile(
             optimizer=keras.optimizers.Adam(learning_rate=2e-3),
             loss=keras.losses.MeanSquaredError(),
-            # # metrics could also be specified
-            # metrics=[
-            #     # keras.metrics.MeanSquaredError(name='mse'),
-            #     keras.metrics.CosineSimilarity(name='cos'),
-            # ],
+            # optionally, metrics could also be specified
+            metrics=keras.metrics.CosineSimilarity(name="cos"),
         )
 
-        history = model.fit(x, y, epochs=30)
+        history = model.fit(x, y, epochs=30, validation_data=(x_val, y_val))
         plot_loss(history)
 
         risk_tensor = model(x_val)
@@ -47,42 +44,13 @@ def test_ensemble(use_case):
             loss=keras.losses.MeanSquaredError(),
         )
 
-        history = model.fit(ds_train, epochs=30)
+        history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))
         plot_loss(history)
 
         risk_tensor = model(x_val)
         plot_risk_2d(x_val, y_val, risk_tensor, model.metric_name)
 
-    # elif use_case == 3:
-
-    #     model = ControllerWrapper(
-    #         user_model,
-    #         metrics=[
-    #             EnsembleWrapper(
-    #                 user_model,
-    #                 is_standalone=False,
-    #                 metric_wrapper=MVEWrapper,
-    #                 num_members=5,
-    #             ),
-    #         ],
-    #     )
-
-    #     model.compile(
-    #         optimizer=keras.optimizers.Adam(learning_rate=2e-3),
-    #         loss=keras.losses.MeanSquaredError(),
-    #     )
-
-    #     history = model.fit(ds_train, epochs=30)
-    #     plot_loss(history)
-
-    #     metrics_out = model(x_val)
-    #     risk_tensor = metrics_out["ensemble"]
-    #     plot_risk_2d(x_val, y_val, risk_tensor, model.metric_name)
-
-    #     # _, epistemic = metrics_out['VAEWrapper']
-    #     # epistemic_normalized = (epistemic - np.min(epistemic)) / (np.max(epistemic) - np.min(epistemic))
-
-    elif use_case == 4:
+    elif use_case == 3:
 
         model = ControllerWrapper(
             user_model,
@@ -92,7 +60,7 @@ def test_ensemble(use_case):
                     user_model,
                     is_standalone=False,
                     metric_wrapper=MVEWrapper,
-                    num_members=5,
+                    num_members=3,
                 ),
             ],
         )
@@ -100,9 +68,11 @@ def test_ensemble(use_case):
         model.compile(
             optimizer=keras.optimizers.Adam(learning_rate=2e-3),
             loss=keras.losses.MeanSquaredError(),
+            # optionally, metrics could also be specified
+            metrics=keras.metrics.CosineSimilarity(name="cos"),
         )
 
-        history = model.fit(ds_train, epochs=30)
+        history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))
         plot_loss(history)
 
         metrics_out = model(x_val)
@@ -116,5 +86,4 @@ def test_ensemble(use_case):
 
 test_ensemble(1)
 test_ensemble(2)
-# test_ensemble(3)
-test_ensemble(4)
+test_ensemble(3)
