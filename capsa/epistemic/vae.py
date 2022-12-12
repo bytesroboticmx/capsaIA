@@ -105,17 +105,16 @@ class VAEWrapper(BaseWrapper):
             base_model.inputs, base_model.layers[-2].output
         )
 
+        if decoder != None:
+            self.decoder = decoder
         # reverse model if we can, accept user decoder if we cannot
-        if hasattr(self.feature_extractor, "layers"):
+        elif hasattr(self.feature_extractor, "layers"):
             self.decoder = reverse_model(self.feature_extractor, latent_dim)
         else:
-            if decoder == None:
-                raise ValueError(
-                    "If you provide a subclassed model, \
-                    the decoder must also be specified"
-                )
-            else:
-                self.decoder = decoder
+            raise ValueError(
+                "If you provide a subclassed model, \
+                the decoder must also be specified"
+            )
 
     @staticmethod
     def sampling(z_mean, z_log_var):
