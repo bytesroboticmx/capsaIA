@@ -14,4 +14,4 @@ Would you prefer following a tutorial? We have a few available that focuses on d
     MVE Wrapper (Classification) <notebooks/3_MVE-Classification.ipynb>
     MVE Wrapper (Regression) <notebooks/4_MVE-Regression.ipynb>
     High Level Introduction to Capsa with a Real World Problem <notebooks/5_High-Dimensional-Depth.ipynb>
-    Anomaly Detection (Advanced) <notebooks/6_OOD_Detection.ipynb>
+    Anomaly Detection (Advanced) <notebooks/6_OOD-Detection.ipynb>
