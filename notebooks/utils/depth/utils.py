@@ -7,15 +7,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
-from scipy import stats
 
 import tensorflow as tf
 from tensorflow import keras
 
 import config
 from models import unet
+from capsa.utils import unpack_risk_tensor
 from capsa import MVEWrapper, EnsembleWrapper, DropoutWrapper, VAEWrapper
-
 
 ################## data loading tools ##################
 
@@ -81,14 +80,17 @@ def _get_normalized_ds(x, y, shuffle=True):
     return ds
 
 
-def get_datasets(id_path, ood_path):
+def get_datasets(id_path, ood_path=None):
     (x_train, y_train), (x_test, y_test) = _load_depth_data(id_path)
     ds_train = _get_normalized_ds(x_train, y_train)
     ds_test = _get_normalized_ds(x_test, y_test)
 
-    x_ood = _load_ood_data(ood_path)
-    ds_ood = _get_normalized_ds(x_ood, None)
-    return ds_train, ds_test, ds_ood
+    if ood_path == None:
+        return ds_train, ds_test
+    else:
+        x_ood = _load_ood_data(ood_path)
+        ds_ood = _get_normalized_ds(x_ood, None)
+        return ds_train, ds_test, ds_ood
 
 
 ################## visualization tools ##################
@@ -361,14 +363,6 @@ def gen_ood_comparison(
 
 
 ################## miscellaneous ##################
-
-
-def unpack_risk_tensor(t, model_name):
-    if model_name in ["mve"]:
-        risk = t.aleatoric
-    else:
-        risk = t.epistemic
-    return risk
 
 
 def notebook_select_gpu(idx, quite=True):

@@ -9,4 +9,5 @@ from .utils import (
     get_preds_names,
     plot_risk_2d,
     gen_calibration_plot,
+    unpack_risk_tensor,
 )

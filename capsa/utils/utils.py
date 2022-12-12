@@ -1,7 +1,9 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras import layers
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
 
 
 def get_user_model():
@@ -130,7 +132,7 @@ def gen_calibration_plot(model, ds, path=None):
     y_test = np.concatenate(y_test_)  # (3029, 128, 160, 1)
 
     # todo-high: need to do it for ensemble of mves as well
-    if isinstance(model, MVEWrapper):
+    if model.metric_name == "mve":
         std = np.sqrt(std)
 
     vals = []
@@ -155,3 +157,11 @@ def gen_calibration_plot(model, ds, path=None):
         plt.close()
     else:
         plt.show()
+
+
+def unpack_risk_tensor(t, model_name):
+    if model_name in ["mve"]:
+        risk = t.aleatoric
+    else:
+        risk = t.epistemic
+    return risk
