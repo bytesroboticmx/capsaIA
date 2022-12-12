@@ -6,7 +6,7 @@ import seaborn as sns
 
 import tensorflow as tf
 
-from utils import unpack_risk_tensor
+from capsa.utils import unpack_risk_tensor
 
 
 def gallery(array, ncols=3):

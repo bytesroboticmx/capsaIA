@@ -383,27 +383,6 @@ def notebook_select_gpu(idx, quite=True):
             print(e)
 
 
-################## notebook utils -- higher level abstraction ##################
-
-
-def AleatoricWrapper(user_model):
-    model = MVEWrapper(user_model)
-    model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=config.LR),
-        loss="mse",
-    )
-    return model
-
-
-def EpistemicWrapper(user_model):
-    model = EnsembleWrapper(user_model, num_members=3)
-    model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=config.LR),
-        loss="mse",
-    )
-    return model
-
-
 def vis_depth_map(model, ds_test=None, ds_ood=None, plot_risk=True):
     # visualize_depth_map(model, ds_train, "Train Dataset", plot_risk=plot_risk)
     if ds_test != None:

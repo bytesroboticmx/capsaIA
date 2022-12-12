@@ -205,7 +205,7 @@ class EnsembleWrapper(BaseWrapper):
         # but in this model there's no single loss that we can monitor -- each member
         # has its own loss. So add another entry to the keras metric dict called
         # "average loss" which is an average of all member's losses.
-        keras_metrics["average_loss"] = tf.reduce_mean(list(keras_metrics.values()))
+        # keras_metrics["average_loss"] = tf.reduce_mean(list(keras_metrics.values()))
 
         if self.is_standalone:
             return keras_metrics
